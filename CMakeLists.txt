@@ -7,6 +7,10 @@ find_package(DPP REQUIRED)
 
 add_executable(warverse_discord_bot
         main.cpp
+        Bot.cpp
+        Bot.hpp
+        Command.cpp
+        Command.hpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE dpp::dpp)
