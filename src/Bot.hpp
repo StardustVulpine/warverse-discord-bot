@@ -3,7 +3,8 @@
 //
 #pragma once
 #include <dpp/dpp.h>
-#include <json.hpp>
+#include <nlohmann/json.hpp>
+#include <sqlite3.h>
 
 using json = nlohmann::json;
 
@@ -14,7 +15,7 @@ namespace warverse
         public:
         dpp::cluster mBotCluster;
 
-        explicit Bot() : mBotCluster(GetToken())
+        Bot() : mBotCluster(GetToken())
         {
             mBotCluster.on_log(dpp::utility::cout_logger());
         }
@@ -38,9 +39,15 @@ namespace warverse
         private:
         static std::string GetToken()
         {
-            std::fstream f(".token");
+            std::fstream f("token.json");
+            if (!f.is_open())
+            {
+                std::println(std::cout, "Token file not found!");
+                return "";
+            }
+
             json token_data = json::parse(f);
-            return token_data["token"];
+            return  token_data["token"];
         }
 
     };

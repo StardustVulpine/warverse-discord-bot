@@ -43,3 +43,4 @@
 *.token
 
 /.idea
+/build/
