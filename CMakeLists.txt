@@ -1,20 +1,21 @@
 cmake_minimum_required(VERSION 4.1)
+set(CMAKE_CXX_STANDARD 23)
 project(warverse_discord_bot)
 
-set(CMAKE_CXX_STANDARD 23)
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    add_compile_options(-Wall -Wextra -Werror)
+    add_compile_definitions(DEBUG)
+endif ()
 
+# Dependencies
 find_package(DPP REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(SQLite3 REQUIRED)
 
-add_executable(warverse_discord_bot
-        main.cpp
-        Bot.cpp
-        Bot.hpp
-        Command.cpp
-        Command.hpp
-)
+# Libraries
+add_subdirectory(commands)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE dpp::dpp)
+# Sources
+add_subdirectory(src ${CMAKE_BINARY_DIR}/bin)
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
 
-configure_file("${CMAKE_SOURCE_DIR}/.token" "${CMAKE_BINARY_DIR}/.token")
