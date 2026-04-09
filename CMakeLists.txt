@@ -11,6 +11,7 @@ endif ()
 find_package(DPP REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(SQLite3 REQUIRED)
+find_package(SQLiteCpp REQUIRED)
 
 # Libraries
 add_subdirectory(commands)

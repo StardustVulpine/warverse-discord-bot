@@ -11,6 +11,7 @@ set(LIB_LINK_TARGETS
         dpp::dpp
         nlohmann_json::nlohmann_json
         ${SQLite3_LIBRARIES}
+        SQLiteCpp
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_LINK_TARGETS})
 
