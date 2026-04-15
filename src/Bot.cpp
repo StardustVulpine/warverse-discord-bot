@@ -3,6 +3,9 @@
 //
 
 #include "Bot.hpp"
+#include <Log.hpp>
+
+using Log = stardustvulpine::Console::Logger::Log;
 
 namespace warverse {
     constexpr dpp::snowflake TEST_GUILD_ID = 1486723392718639156;
@@ -91,6 +94,7 @@ namespace warverse {
 
     void Bot::Start()
     {
+        Log::Info("Bot started!");
         mBotCluster.start(dpp::st_wait);
     }
 } // warverse

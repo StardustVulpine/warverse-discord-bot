@@ -15,6 +15,7 @@ find_package(SQLiteCpp REQUIRED)
 
 # Libraries
 add_subdirectory(commands)
+add_subdirectory(logger)
 
 # Sources
 add_subdirectory(src ${CMAKE_BINARY_DIR}/bin)

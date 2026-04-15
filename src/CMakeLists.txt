@@ -12,11 +12,13 @@ set(LIB_LINK_TARGETS
         nlohmann_json::nlohmann_json
         ${SQLite3_LIBRARIES}
         SQLiteCpp
+        console_logger
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_LINK_TARGETS})
 
 set(LIB_DEPENDENCY_LIST
         wdb_commands
+        console_logger
 )
 add_dependencies(${PROJECT_NAME} ${LIB_DEPENDENCY_LIST})
 
