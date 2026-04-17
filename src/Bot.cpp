@@ -5,9 +5,9 @@
 #include "Bot.hpp"
 #include <Log.hpp>
 
-using Log = stardustvulpine::Console::Logger::Log;
 
-namespace warverse {
+
+namespace wdb {
     constexpr dpp::snowflake TEST_GUILD_ID = 1486723392718639156;
 
     void Bot::UpdateCommands()
@@ -94,6 +94,10 @@ namespace warverse {
 
     void Bot::Start()
     {
+        UpdateCommands();
+        Log::Trace("Updating commands...");
+        RegisterCommands();
+        Log::Trace("Commands updated and registered!");
         Log::Info("Bot started!");
         mBotCluster.start(dpp::st_wait);
     }

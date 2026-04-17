@@ -28,8 +28,10 @@ namespace stardustvulpine::Console::Logger
             NONE_L = 0,
             INFO_L,
             DEBUG_L,
+            TRACE_L,
             WARNING_L,
-            ERROR_L
+            ERROR_L,
+            CRITICAL_L
         };
 
         public:
@@ -39,28 +41,40 @@ namespace stardustvulpine::Console::Logger
             PrintLog(Severity::NONE_L, message);
         }
 
-        template<class... Args> static void Debug(std::format_string<Args...> msg, Args&&... args)
+        template<class... Args> static void Info(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::format(msg, std::forward<Args>(args)...);
-            PrintLog(Severity::DEBUG_L, message);
-        }
-
-        template<class... Args> static void Info(std::format_string<Args...> msg, Args&&... args)
-        {
-            const std::string message = std::format(msg, std::forward<Args>(args)...);
+            const std::string message = std::vformat(msg, std::make_format_args(args...));
             PrintLog(Severity::INFO_L, message);
         }
 
-        template<class... Args> static void Warning(std::format_string<Args...> msg, Args&&... args)
+        template<class... Args> static void Debug(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::format(msg, std::forward<Args>(args)...);
+            const std::string message = std::vformat(msg, std::make_format_args(args...));
+            PrintLog(Severity::DEBUG_L, message);
+        }
+
+        template<class... Args> static void Trace(const std::string_view msg, Args&&... args)
+        {
+            const std::string message = std::vformat(msg, std::make_format_args(args...));
+            PrintLog(Severity::TRACE_L, message);
+        }
+
+        template<class... Args> static void Warning(const std::string_view msg, Args&&... args)
+        {
+            const std::string message = std::vformat(msg, std::make_format_args(args...));
             PrintLog(Severity::WARNING_L, message);
         }
 
-        template<class... Args> static void Error(std::format_string<Args...> msg, Args&&... args)
+        template<class... Args> static void Error(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::format(msg, std::forward<Args>(args)...);
+            const std::string message = std::vformat(msg, std::make_format_args(args...));
             PrintLog(Severity::ERROR_L, message);
+        }
+
+        template<class... Args> static void Critical(const std::string_view msg, Args&&... args)
+        {
+            const std::string message = std::vformat(msg, std::make_format_args(args...));
+            PrintLog(Severity::CRITICAL_L, message);
         }
 
         private:
@@ -73,21 +87,29 @@ namespace stardustvulpine::Console::Logger
             std::string level;
             switch (severity)
             {
-                case Severity::DEBUG_L:
-                    col = color.ORANGE;
-                    level = "DEBUG";
-                    break;
-                case Severity::ERROR_L:
-                    col = color.RED;
-                    level = "ERROR";
-                    break;
                 case Severity::INFO_L:
                     col = color.GREEN;
                     level = "INFO";
                     break;
+                case Severity::DEBUG_L:
+                    col = color.BLUE;
+                    level = "DEBUG";
+                    break;
+                case Severity::TRACE_L:
+                    col = color.PURPLE;
+                    level = "TRACE";
+                    break;
                 case Severity::WARNING_L:
                     col = color.YELLOW;
                     level = "WARNING";
+                    break;
+                case Severity::ERROR_L:
+                    col = color.ORANGE;
+                    level = "ERROR";
+                    break;
+                case Severity::CRITICAL_L:
+                    col = color.RED;
+                    level = "CRITICAL";
                     break;
                 case Severity::NONE_L:
                     col = color.RESET;

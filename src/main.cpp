@@ -25,8 +25,6 @@ int main ()
     }
 
     warverse::Bot bot;
-    bot.UpdateCommands();
-    bot.RegisterCommands();
     bot.Start();
 
     return 0;

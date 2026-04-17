@@ -5,10 +5,12 @@
 #include <dpp/dpp.h>
 #include <nlohmann/json.hpp>
 #include <sqlite3.h>
+#include <Log.hpp>
 
 using json = nlohmann::json;
+using Log = stardustvulpine::Console::Logger::Log;
 
-namespace warverse
+namespace wdb
 {
     class Bot
     {
@@ -17,11 +19,11 @@ namespace warverse
 
         Bot() : mBotCluster(GetToken())
         {
-            mBotCluster.on_log(dpp::utility::cout_logger());
+            SetLogger();
         }
         explicit Bot(const std::string& token) : mBotCluster(token)
         {
-            mBotCluster.on_log(dpp::utility::cout_logger());
+            SetLogger();
         }
 
         ~Bot() = default;
@@ -32,8 +34,7 @@ namespace warverse
         Bot& operator=(const Bot&) = delete;
         Bot& operator=(Bot&&) = delete;
 
-        void UpdateCommands();
-        void RegisterCommands();
+
         void Start();
 
         private:
@@ -49,6 +50,39 @@ namespace warverse
             json token_data = json::parse(f);
             return  token_data["token"];
         }
+
+        void SetLogger()
+        {
+            mBotCluster.on_log([](const dpp::log_t& log)
+            {
+                switch (log.severity)
+                {
+                    case dpp::ll_info:
+                        Log::Info(log.message);
+                        break;
+                    case dpp::ll_debug:
+                        Log::Debug(log.message);
+                        break;
+                    case dpp::ll_trace:
+                        Log::Trace(log.message);
+                        break;
+                    case dpp::ll_warning:
+                        Log::Warning(log.message);
+                        break;
+                    case dpp::ll_error:
+                        Log::Error(log.message);
+                        break;
+                    case dpp::ll_critical:
+                        Log::Critical(log.message);
+                        break;
+                    default:
+                        Log::Print(log.message);
+                        break;
+                }
+            });
+        }
+        void UpdateCommands();
+        void RegisterCommands();
 
     };
 }
