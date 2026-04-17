@@ -7,7 +7,8 @@
 
 
 
-namespace wdb {
+namespace wdb::discord
+{
     constexpr dpp::snowflake TEST_GUILD_ID = 1486723392718639156;
 
     void Bot::UpdateCommands()

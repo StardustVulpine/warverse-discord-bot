@@ -7,11 +7,15 @@
 #include <string>
 #include <iostream>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 
 namespace stardustvulpine::Console::Logger
 {
     class Log
     {
+        static constexpr std::string logDir = "./logs/";
+
         struct Color
         {
             std::string GREEN = "\033[38;2;0;255;1m";
@@ -35,50 +39,65 @@ namespace stardustvulpine::Console::Logger
         };
 
         public:
-        template<class... Args> static void Print(const std::string_view msg, Args&&... args)
+        static void ToFile()
         {
-            const std::string message = std::vformat(msg, std::make_format_args(args...));
-            PrintLog(Severity::NONE_L, message);
+            if (!std::filesystem::exists(logDir))
+            {
+                std::filesystem::create_directory(logDir);
+            }
+            logFilePath = std::format("{}{}.log", logDir, Time());
+            try
+            {
+                logFile.open(logFilePath);
+                saveLogs = true;
+            } catch (const std::exception& e)
+            {
+                Print("Could not create or open log file on the following path: {} \n Reason: {}", logFilePath.string(), e.what());
+            }
         }
 
+        template<class... Args> static void Print(const std::string_view msg, Args&&... args)
+        {
+            PrintLog(Severity::NONE_L, std::vformat(msg, std::make_format_args(args...)));
+        }
         template<class... Args> static void Info(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::vformat(msg, std::make_format_args(args...));
-            PrintLog(Severity::INFO_L, message);
+            PrintLog(Severity::INFO_L, std::vformat(msg, std::make_format_args(args...)));
         }
 
         template<class... Args> static void Debug(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::vformat(msg, std::make_format_args(args...));
-            PrintLog(Severity::DEBUG_L, message);
+#ifdef DEBUG
+            PrintLog(Severity::DEBUG_L, std::vformat(msg, std::make_format_args(args...)));
+#endif
         }
 
         template<class... Args> static void Trace(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::vformat(msg, std::make_format_args(args...));
-            PrintLog(Severity::TRACE_L, message);
+#ifdef DEBUG
+            PrintLog(Severity::TRACE_L, std::vformat(msg, std::make_format_args(args...)));
+#endif
         }
 
         template<class... Args> static void Warning(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::vformat(msg, std::make_format_args(args...));
-            PrintLog(Severity::WARNING_L, message);
+            PrintLog(Severity::WARNING_L, std::vformat(msg, std::make_format_args(args...)));
         }
 
         template<class... Args> static void Error(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::vformat(msg, std::make_format_args(args...));
-            PrintLog(Severity::ERROR_L, message);
+            PrintLog(Severity::ERROR_L, std::vformat(msg, std::make_format_args(args...)));
         }
 
         template<class... Args> static void Critical(const std::string_view msg, Args&&... args)
         {
-            const std::string message = std::vformat(msg, std::make_format_args(args...));
-            PrintLog(Severity::CRITICAL_L, message);
+            PrintLog(Severity::CRITICAL_L, std::vformat(msg, std::make_format_args(args...)));
         }
 
         private:
-        // Declaration of the static member. The definition will be in Log.cpp.
+        static inline bool saveLogs;
+        static inline std::filesystem::path logFilePath;
+        static inline std::ofstream logFile;
         static const Color color;
 
         static void PrintLog(const Severity severity, const std::string& msg)
@@ -92,11 +111,11 @@ namespace stardustvulpine::Console::Logger
                     level = "INFO";
                     break;
                 case Severity::DEBUG_L:
-                    col = color.BLUE;
+                    col = color.RESET;
                     level = "DEBUG";
                     break;
                 case Severity::TRACE_L:
-                    col = color.PURPLE;
+                    col = color.BLUE;
                     level = "TRACE";
                     break;
                 case Severity::WARNING_L:
@@ -116,8 +135,16 @@ namespace stardustvulpine::Console::Logger
                     level = "";
                     break;
             }
+            const auto logTime = Time();
+            auto logString = std::format("{}[{}] {}: {}{}", col, logTime, level, msg, color.RESET);
+            std::println(std::cout,"{}", logString);
 
-            std::println(std::cout,"{}[{}] {}: {}{}", col, Time(), level, msg, color.RESET);
+            if (saveLogs)
+            {
+                logString = std::format("[{}] {}: {}\n", logTime, level, msg);
+                logFile.write(logString.c_str(), logString.size());
+                logFile.flush();
+            }
         }
 
         static std::string Time()
@@ -125,7 +152,7 @@ namespace stardustvulpine::Console::Logger
             const auto utc_now{std::chrono::system_clock::now()};
             const auto time = std::chrono::current_zone()->to_local(utc_now);
 
-            return std::vformat("{}", std::make_format_args(time));
+            return std::format("{}", time);
         }
     };
     inline const Log::Color Log::color = Color();

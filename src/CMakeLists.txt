@@ -18,6 +18,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_LINK_TARGETS})
 
 set(LIB_DEPENDENCY_LIST
         wdb_commands
+        wdb_database
         console_logger
 )
 add_dependencies(${PROJECT_NAME} ${LIB_DEPENDENCY_LIST})

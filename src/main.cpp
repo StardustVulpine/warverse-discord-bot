@@ -11,7 +11,7 @@ std::string GetSQLQuery(const std::string& queryPath);
 
 int main ()
 {
-    const SQLite::Database db("../../../db/test.db", SQLite::OPEN_READWRITE, -1);
+    /*const SQLite::Database db("../../../db/test.db", SQLite::OPEN_READWRITE, -1);
 
     SQLite::Statement query(db, GetSQLQuery("../../../sql/query.sql"));
 
@@ -22,9 +22,11 @@ int main ()
         int64_t discordUserID = query.getColumn(2);
 
         std::println(std::cout, "ID: {}, DiscordUsername: {}, DiscordUserID: {}", id, discordUsername, discordUserID);
-    }
+    }*/
 
-    warverse::Bot bot;
+
+
+    wdb::discord::Bot bot;
     bot.Start();
 
     return 0;

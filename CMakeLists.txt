@@ -16,8 +16,11 @@ find_package(SQLiteCpp REQUIRED)
 # Libraries
 add_subdirectory(commands)
 add_subdirectory(logger)
+add_subdirectory(db)
 
 # Sources
 add_subdirectory(src ${CMAKE_BINARY_DIR}/bin)
+
+configure_file("${CMAKE_SOURCE_DIR}/sql/sql_queries.json" "${CMAKE_BINARY_DIR}/bin/sql/sql_queries.json")
 
 
