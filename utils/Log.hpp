@@ -29,7 +29,7 @@ namespace stardustvulpine::Utils::Console
         public:
         static void ToFile()
         {
-            std::string logDir = GetUserDataDir();
+            std::string logDir = GetLogsDir();
             std::filesystem::create_directories(logDir);
 
             logFilePath = std::format("{}/{}.log", logDir, Time());
@@ -37,48 +37,111 @@ namespace stardustvulpine::Utils::Console
             {
                 logFile.open(logFilePath);
                 saveLogs = true;
-                Print("Logging to: {}", logFilePath.string());
+                Info("Logging to: {}", logFilePath.string());
             } catch (const std::exception& e)
             {
-                Print("Could not create or open log file on the following path: {} \n Reason: {}", logFilePath.string(), e.what());
+                Error("Could not create or open log file on the following path: {} \n Reason: {}", logFilePath.string(), e.what());
             }
         }
 
         template<class... Args> static void Print(const std::string_view msg, Args&&... args)
         {
-            PrintLog(Severity::NONE_L, std::vformat(msg, std::make_format_args(args...)));
+            std::string message;
+            if (sizeof ... (args) == 0)
+            {
+                message = std::string(msg);
+            }
+            else
+            {
+                message = std::vformat(msg, std::make_format_args(args...));
+            }
+            PrintLog(Severity::NONE_L, message);
         }
         template<class... Args> static void Info(const std::string_view msg, Args&&... args)
         {
-            PrintLog(Severity::INFO_L, std::vformat(msg, std::make_format_args(args...)));
+            std::string message;
+            if (sizeof ... (args) == 0)
+            {
+                message = std::string(msg);
+            }
+            else
+            {
+                message = std::vformat(msg, std::make_format_args(args...));
+            }
+            PrintLog(Severity::INFO_L, message);
         }
         template<class... Args> static void Debug(const std::string_view msg, Args&&... args)
         {
 #ifdef DEBUG
-            PrintLog(Severity::DEBUG_L, std::vformat(msg, std::make_format_args(args...)));
+            std::string message;
+            if (sizeof ... (args) == 0)
+            {
+                message = std::string(msg);
+            }
+            else
+            {
+                message = std::vformat(msg, std::make_format_args(args...));
+            }
+            PrintLog(Severity::DEBUG_L, message);
 #endif
         }
 
         template<class... Args> static void Trace(const std::string_view msg, Args&&... args)
         {
 #ifdef DEBUG
-            PrintLog(Severity::TRACE_L, std::vformat(msg, std::make_format_args(args...)));
+            std::string message;
+            if (sizeof ... (args) == 0)
+            {
+                message = std::string(msg);
+            }
+            else
+            {
+                message = std::vformat(msg, std::make_format_args(args...));
+            }
+            PrintLog(Severity::TRACE_L, message);
 #endif
         }
 
         template<class... Args> static void Warning(const std::string_view msg, Args&&... args)
         {
-            PrintLog(Severity::WARNING_L, std::vformat(msg, std::make_format_args(args...)));
+            std::string message;
+            if (sizeof ... (args) == 0)
+            {
+                message = std::string(msg);
+            }
+            else
+            {
+                message = std::vformat(msg, std::make_format_args(args...));
+            }
+            PrintLog(Severity::WARNING_L, message);
         }
 
         template<class... Args> static void Error(const std::string_view msg, Args&&... args)
         {
-            PrintLog(Severity::ERROR_L, std::vformat(msg, std::make_format_args(args...)));
+            std::string message;
+            if (sizeof ... (args) == 0)
+            {
+                message = std::string(msg);
+            }
+            else
+            {
+                message = std::vformat(msg, std::make_format_args(args...));
+            }
+            PrintLog(Severity::ERROR_L, message);
         }
 
         template<class... Args> static void Critical(const std::string_view msg, Args&&... args)
         {
-            PrintLog(Severity::CRITICAL_L, std::vformat(msg, std::make_format_args(args...)));
+            std::string message;
+            if (sizeof ... (args) == 0)
+            {
+                message = std::string(msg);
+            }
+            else
+            {
+                message = std::vformat(msg, std::make_format_args(args...));
+            }
+            PrintLog(Severity::CRITICAL_L, message);
         }
 
         private:
@@ -105,11 +168,11 @@ namespace stardustvulpine::Utils::Console
                     level = "INFO";
                     break;
                 case Severity::DEBUG_L:
-                    col = RESET_COLOR;
+                    col = BLUE;
                     level = "DEBUG";
                     break;
                 case Severity::TRACE_L:
-                    col = BLUE;
+                    col = RESET_COLOR;
                     level = "TRACE";
                     break;
                 case Severity::WARNING_L:
@@ -126,16 +189,19 @@ namespace stardustvulpine::Utils::Console
                     break;
                 case Severity::NONE_L:
                     col = RESET_COLOR;
-                    level = "";
+                    level = "LOG";
                     break;
             }
             const auto logTime = Time();
-            auto logString = std::format("{}[{}] {}: {}{}", col, logTime, level, msg, RESET_COLOR);
-            std::println(std::cout,"{}", logString);
+            auto logString = col + "[" + logTime + "] " + level + ": " + msg + RESET_COLOR;
+                //std::format("{}[{}] {}: {}{}", col, logTime, level, msg, RESET_COLOR);
+            std::cout << logString << '\n';
+            std::cout.flush();
 
             if (saveLogs)
             {
-                logString = std::format("[{}] {}: {}\n", logTime, level, msg);
+                logString = "[" + logTime + "] " + level + ": " + msg + "\n";
+                    //std::format("[{}] {}: {}\n", logTime, level, msg);
                 logFile.write(logString.c_str(), static_cast<int>(logString.size()));
                 logFile.flush();
             }

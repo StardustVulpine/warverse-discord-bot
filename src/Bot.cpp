@@ -10,18 +10,15 @@ namespace wdb::discord
 {
     constexpr dpp::snowflake TEST_GUILD_ID = 1486723392718639156;
 
-    void Bot::UpdateCommands()
+    void Bot::UpdateEvents()
     {
-        mBotCluster.on_slashcommand([](const dpp::slashcommand_t& event)
-        {
-            if (event.command.get_command_name() == "dupa") {
-                event.reply("Dupa!");
-            }
-        });
+        Log::Trace("Bot::UpdateEvents updating bot events...");
 
-        mBotCluster.on_slashcommand([](const dpp::slashcommand_t& event)
-        {
+        mBotCluster.on_slashcommand([](const dpp::slashcommand_t& event) {
             if (event.command.get_command_name() == "ping") {
+                std::string issuingUsername = event.command.get_issuing_user().username;
+                Log::Print("{} used command: {}", issuingUsername, event.command.get_command_name());
+
                 dpp::snowflake userID = event.command.get_issuing_user().id;
                 event.reply(std::format("Pong! <@{}>", std::to_string(userID)));
             }
@@ -29,6 +26,9 @@ namespace wdb::discord
 
         mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event) {
             if (event.command.get_command_name() == "pm") {
+                std::string issuingUsername = event.command.get_issuing_user().username;
+                Log::Print("{} used command: {}", issuingUsername, event.command.get_command_name());
+
                 dpp::snowflake user;
                 std::string message;
 
@@ -47,7 +47,7 @@ namespace wdb::discord
                 }
 
                 /* Send a message to the user set above. */
-                mBotCluster.direct_message_create(user, dpp::message(message), [event, user](const dpp::confirmation_callback_t& callback){
+                mBotCluster.direct_message_create(user, dpp::message(message), [event, user, issuingUsername](const dpp::confirmation_callback_t& callback){
                     /* If the callback errors, we want to send a message telling the author that something went wrong. */
                     if (callback.is_error()) {
                         /* Here, we want the error message to be different if the user we're trying to send a message to is the command author. */
@@ -56,23 +56,45 @@ namespace wdb::discord
                         } else {
                             event.reply(dpp::message("I couldn't send a message to that user. Please check that is a valid user!").set_flags(dpp::m_ephemeral));
                         }
-
+                        Log::Print("{} used command: {}. Message could not be delivered.", issuingUsername, event.command.get_command_name());
                         return;
                     }
 
                     /* We do the same here, so the message is different if it's to the command author or if it's to a specified user. */
                     if (user == event.command.get_issuing_user().id) {
                         event.reply(dpp::message("I've sent you a private message.")/*.set_flags(dpp::m_ephemeral)*/);
+                        Log::Print("{} used command: {}. Message was sent.", issuingUsername, event.command.get_command_name());
                     } else {
                         event.reply(dpp::message("I've sent a message to that user.")/*.set_flags(dpp::m_ephemeral)*/);
                     }
                 });
             }
         });
+
+        // Listen for leveling bot messages and catch mentioned user.
+        mBotCluster.on_message_create([](const dpp::message_create_t& event) {
+            constexpr dpp::snowflake targetChannelID = 1491554468821602377;
+            constexpr dpp::snowflake targetUserID = 336562353795760131;
+
+            // Check if sent in correct channel and by correct user and contains any mentions
+            if (event.msg.channel_id != targetChannelID) { return; }
+            if (event.msg.author.id != targetUserID) { return; }
+            if (event.msg.mentions.empty()) { return; }
+
+            dpp::user mentionedUser = event.msg.mentions[0].first;
+
+            const std::string replyMessage = std::format("Detected that user <@{}> mentioned <@{}>!", std::to_string(event.msg.author.id), std::to_string(mentionedUser.id));
+
+            Log::Info("Detected that user <@{}> mentioned <@{}>!", event.msg.author.username, mentionedUser.username);
+
+            event.reply(replyMessage);
+
+        });
     }
 
     void Bot::RegisterCommands()
     {
+        Log::Trace("Registering bot commands...");
         mBotCluster.on_ready([this](const dpp::ready_t&) {
             if (dpp::run_once<struct register_guild_commands>())
             {
@@ -84,20 +106,16 @@ namespace wdb::discord
                 pm.add_option(dpp::command_option(dpp::co_mentionable, "user", "The user to message", false));
                 pm.add_option(dpp::command_option(dpp::co_string, "message", "The message to send", false));
 
-                Commands.emplace_back("dupa", "dupa dupa!", mBotCluster.me.id);
-
                 mBotCluster.guild_bulk_command_create(Commands, TEST_GUILD_ID);
-                mBotCluster.global_bulk_command_delete();
             }
         });
+        Log::Info("Commands registered!");
     }
 
     void Bot::Start()
     {
-        UpdateCommands();
-        Log::Trace("Updating commands...");
+        UpdateEvents();
         RegisterCommands();
-        Log::Trace("Commands updated and registered!");
         Log::Info("Bot started!");
         mBotCluster.start(dpp::st_wait);
     }

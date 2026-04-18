@@ -20,7 +20,7 @@ int main ()
     }*/
 
 
-
+    Log::ToFile();
     wdb::discord::Bot bot;
     bot.Start();
 

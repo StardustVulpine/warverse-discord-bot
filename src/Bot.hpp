@@ -5,7 +5,7 @@
 #include <dpp/dpp.h>
 #include <nlohmann/json.hpp>
 #include <sqlite3.h>
-#include <Log.hpp>
+#include <Utils.hpp>
 
 using json = nlohmann::json;
 using Log = stardustvulpine::Utils::Console::Log;
@@ -17,10 +17,10 @@ namespace wdb::discord
         public:
         dpp::cluster mBotCluster;
 
-        Bot()
+        Bot() : mBotCluster(GetToken(), dpp::i_default_intents)
         {
+            //mBotCluster.on_log(dpp::utility::cout_logger());
             SetLogger();
-            mBotCluster.token = GetToken();
         }
         explicit Bot(const std::string& token) : mBotCluster(token)
         {
@@ -41,31 +41,38 @@ namespace wdb::discord
         private:
         static std::string GetToken()
         {
-            if (!std::filesystem::exists("token"))
+            Log::Trace("Bot::GetToken()");
+            std::string tokenPath = std::format("{}/.token", stardustvulpine::Utils::GetAppDir());
+            if (!std::filesystem::exists(tokenPath))
             {
-                Log::Print("Token not found. Provide token first: ");
+                Log::Warning("Token not found. Provide token first: ");
                 std::string token;
                 std::cin >> token;
                 auto j = R"({ "token": "{}"})"_json;
                 j["token"] = token;
-                std::ofstream of("token");
+                std::ofstream of(tokenPath);
                 of << j;
                 of.close();
+                Log::Debug("Token saved to file.");
             }
-            std::fstream f("token");
+            Log::Trace("Opening token file...");
+            std::fstream f(tokenPath);
             if (!f.is_open())
             {
-                std::println(std::cout, "Token file not found!");
+                Log::Warning("Token file could not be opened!");
+                Log::Debug("Skipping token file...");
                 return "";
             }
-
+            Log::Trace("Token file opened!");
             json token_data = json::parse(f);
+            f.close();
+            Log::Info("Token Found!");
             return  token_data["token"];
         }
 
         void SetLogger()
         {
-            Log::ToFile();
+            Log::Trace("Bot::SetLogger() setting up bot logger...");
 
             mBotCluster.on_log([](const dpp::log_t& log)
             {
@@ -94,8 +101,9 @@ namespace wdb::discord
                         break;
                 }
             });
+            Log::Trace("Logger set!");
         }
-        void UpdateCommands();
+        void UpdateEvents();
         void RegisterCommands();
 
     };

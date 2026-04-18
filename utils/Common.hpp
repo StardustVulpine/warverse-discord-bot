@@ -15,9 +15,17 @@ namespace stardustvulpine::Utils
         if (!userDataDir)
         {
             userDataDir = getenv("HOME");
-            return std::format("{}/.local/share/warverse-discord-bot/logs", userDataDir);
+            return std::format("{}/.local/share", userDataDir);
         }
         userDataDir = getenv("XDG_DATA_HOME");
-        return std::format("{}/warverse-discord-bot/logs", userDataDir);
+        return std::format("{}", userDataDir);
+    }
+    inline std::string GetAppDir()
+    {
+        return std::format("{}/warverse-discord-bot", GetUserDataDir());
+    }
+    inline std::string GetLogsDir()
+    {
+        return std::format("{}/logs", GetAppDir());
     }
 }
