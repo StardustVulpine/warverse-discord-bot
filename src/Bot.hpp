@@ -8,7 +8,7 @@
 #include <Log.hpp>
 
 using json = nlohmann::json;
-using Log = stardustvulpine::Console::Logger::Log;
+using Log = stardustvulpine::Utils::Console::Log;
 
 namespace wdb::discord
 {

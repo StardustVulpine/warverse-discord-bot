@@ -1,0 +1,6 @@
+{
+  "Users":
+  {
+    "GetAllUsers": "SELECT * FROM Users"
+  }
+}
