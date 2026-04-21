@@ -87,6 +87,15 @@ namespace wdb::discord
             }
         });
 
+        mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event)
+        {
+            if (event.command.get_command_name() == "show_users")
+            {
+                event.reply(dpp::message(m_dbManager.GetAllUsers()));
+            }
+        });
+
+
         // Listen for leveling bot messages and catch mentioned user.
         mBotCluster.on_message_create([](const dpp::message_create_t& event) {
             constexpr dpp::snowflake targetChannelID = 1491554468821602377;
@@ -127,6 +136,8 @@ namespace wdb::discord
                     "add_user", "Add user to database", mBotCluster.me.id);
                 add_user.add_option(dpp::command_option(
                     dpp::co_mentionable, "user", "The user to add", true));
+
+                Commands.emplace_back("show_users", "List all users in database", mBotCluster.me.id);
 
                 mBotCluster.guild_bulk_command_create(Commands, TEST_GUILD_ID);
             }

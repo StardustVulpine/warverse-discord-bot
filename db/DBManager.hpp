@@ -24,7 +24,9 @@ namespace wdb::db
         void CreateDatabase() const;
         void CreateTables() const;
         void OpenDatabase();
+
         void AddNewUser(std::string discordUsername, int64_t discordID) const;
+        std::string GetAllUsers() const;
 
         private:
         std::filesystem::path m_DatabasePath;

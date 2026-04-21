@@ -21,6 +21,5 @@ add_subdirectory(db)
 # Sources
 add_subdirectory(src ${CMAKE_BINARY_DIR}/bin)
 
-configure_file("${CMAKE_SOURCE_DIR}/db/sql/sql_queries.json" "${CMAKE_BINARY_DIR}/bin/sql/sql_queries.json")
 
 

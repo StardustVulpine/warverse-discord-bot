@@ -81,4 +81,22 @@ namespace wdb::db
         Log::Trace("Query to be executed:\n{}", query);
         SQLite::Statement(*m_Database, query).exec();
     }
+
+    std::string DBManager::GetAllUsers() const
+    {
+        Log::Trace("DBManager::GetAllUsers()");
+        SQLite::Statement query(*m_Database, "SELECT * FROM Users");
+
+        std::string rplMsg = "Users:\n";
+
+        while (query.executeStep())
+        {
+            int id = query.getColumn(0);
+            std::string discordUsername = query.getColumn(1);
+            int64_t discordUserID = query.getColumn(2);
+
+            rplMsg += std::format("ID: {}, DiscordUsername: {}, DiscordUserID: {}\n", id, discordUsername, discordUserID);
+        }
+        return rplMsg;
+    }
 } // wdb

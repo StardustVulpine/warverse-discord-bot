@@ -1,6 +1,23 @@
 {
-  "Users":
+  "User 1":
   {
-    "GetAllUsers": "SELECT * FROM Users"
+    "ID": "1",
+    "discordUsername": "username",
+    "discordID": "123456789012345678",
+    "FractionID": "null"
+  },
+  "User 2":
+  {
+    "ID": "2",
+    "discordUsername": "username",
+    "discordID": "123456789012345678",
+    "FractionID": "null"
+  },
+  "User 3":
+  {
+    "ID": "3",
+    "discordUsername": "username",
+    "discordID": "123456789012345678",
+    "FractionID": "null"
   }
 }
