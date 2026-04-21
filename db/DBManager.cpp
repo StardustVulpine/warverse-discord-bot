@@ -8,8 +8,6 @@
 #include <fstream>
 #include <filesystem>
 
-using Log = stardustvulpine::Utils::Console::Log;
-
 namespace wdb::db
 {
     DBManager::DBManager()
@@ -20,9 +18,13 @@ namespace wdb::db
         if (!std::filesystem::exists(m_DatabasePath)) {
             Log::Warning("Database file not found!");
             CreateDatabase();
-            return;
         }
         OpenDatabase();
+        if (!m_Database->tableExists("Users") || !m_Database->tableExists("Fractions"))
+        {
+            Log::Warning("Database tables not found!");
+            CreateTables();
+        }
     }
 
     SQLite::Database *DBManager::GetDatabase() const
@@ -36,7 +38,7 @@ namespace wdb::db
     }
 
 
-    void DBManager::CreateDatabase()
+    void DBManager::CreateDatabase() const
     {
         Log::Info("Creating database...");
         std::filesystem::create_directories(m_DatabasePath.parent_path());
@@ -44,12 +46,21 @@ namespace wdb::db
         std::ofstream of(m_DatabasePath);
         of.close();
         Log::Info("Database created!");
+    }
 
-        OpenDatabase();
+    void DBManager::CreateTables() const
+    {
+        if (!m_Database->tableExists("Users"))
+        {
+            Log::Debug("Creating database 'Users' table...");
+            SQLite::Statement(*m_Database, GetQueryFromSQLFile("../../../db/sql/createUsersTable.sql")).exec();
+        }
 
-        Log::Debug("Creating database tables...");
-        SQLite::Statement(*m_Database, GetQueryFromSQLFile("../../../db/sql/createUsersTable.sql")).exec();
-        SQLite::Statement(*m_Database, GetQueryFromSQLFile("../../../db/sql/createFractionsTable.sql")).exec();
+        if (!m_Database->tableExists("Fractions"))
+        {
+            Log::Debug("Creating database 'Fractions' table...");
+            SQLite::Statement(*m_Database, GetQueryFromSQLFile("../../../db/sql/createFractionsTable.sql")).exec();
+        }
         Log::Info("Database tables created!");
     }
 
@@ -60,16 +71,14 @@ namespace wdb::db
         Log::Info("Database Loaded!");
     }
 
-    std::string DBManager::GetQueryFromSQLFile(const std::filesystem::path &queryPath)
+    void DBManager::AddNewUser(std::string discordUsername, int64_t discordID) const
     {
-        Log::Trace("DBManager::GetQueryFromSQLFile() with path: {}", queryPath.string());
-        std::fstream fs(queryPath);
-        const uintmax_t filesize = std::filesystem::file_size(queryPath);
-        auto buffer = std::make_unique<char[]>(filesize + 1);
-        fs.read(buffer.get(), static_cast<std::streamsize>(filesize));
-        buffer[filesize] = '\0';
-        Log::Trace("Query to be executed:\n{}", buffer.get());
+        Log::Trace("DBManager::AddNewUser()");
 
-        return buffer.get();
+        std::string query = std::format(
+            R"(INSERT INTO Users (DiscordUsername, DiscordID) VALUES ('{}', '{}'))",
+            discordUsername, discordID);
+        Log::Trace("Query to be executed:\n{}", query);
+        SQLite::Statement(*m_Database, query).exec();
     }
 } // wdb

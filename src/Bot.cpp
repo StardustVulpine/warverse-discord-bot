@@ -69,6 +69,24 @@ namespace wdb::discord
             }
         });
 
+        mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event)
+        {
+            if (event.command.get_command_name() == "add_user")
+            {
+                if (event.get_parameter("user").index() == 0) {
+                    event.reply(dpp::message("Couldn't add user. No user provided.").set_flags(dpp::m_ephemeral));
+                    return;
+                }
+                dpp::user user = event.command.get_resolved_user(
+                    std::get<dpp::snowflake>(event.get_parameter("user")));
+
+                m_dbManager.AddNewUser(user.username, user.id);
+                const std::string reply = std::format(R"(User '{}' with ID '{}' has been added to database.)",
+                    user.username, std::to_string(user.id));
+                event.reply(dpp::message(reply));
+            }
+        });
+
         // Listen for leveling bot messages and catch mentioned user.
         mBotCluster.on_message_create([](const dpp::message_create_t& event) {
             constexpr dpp::snowflake targetChannelID = 1491554468821602377;
@@ -86,7 +104,6 @@ namespace wdb::discord
             Log::Info("Detected that user <@{}> mentioned <@{}>!", event.msg.author.username, mentionedUser.username);
 
             event.reply(replyMessage);
-
         });
     }
 
@@ -101,8 +118,15 @@ namespace wdb::discord
                 Commands.emplace_back("ping", "Ping pong!", mBotCluster.me.id);
 
                 auto& pm = Commands.emplace_back("pm", "Send a private message.", mBotCluster.me.id);
-                pm.add_option(dpp::command_option(dpp::co_mentionable, "user", "The user to message", false));
-                pm.add_option(dpp::command_option(dpp::co_string, "message", "The message to send", false));
+                pm.add_option(dpp::command_option(
+                        dpp::co_mentionable, "user", "The user to message", false));
+                pm.add_option(dpp::command_option(
+                        dpp::co_string, "message", "The message to send", false));
+
+                auto& add_user = Commands.emplace_back(
+                    "add_user", "Add user to database", mBotCluster.me.id);
+                add_user.add_option(dpp::command_option(
+                    dpp::co_mentionable, "user", "The user to add", true));
 
                 mBotCluster.guild_bulk_command_create(Commands, TEST_GUILD_ID);
             }

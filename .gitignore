@@ -44,3 +44,5 @@
 
 /.idea
 /build/
+/db/wdb.db
+/db/wdb.sqbpro
