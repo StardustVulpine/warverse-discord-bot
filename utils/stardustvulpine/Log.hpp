@@ -9,7 +9,6 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-#include "Common.hpp"
 
 namespace stardustvulpine::Utils::Console
 {
@@ -27,9 +26,13 @@ namespace stardustvulpine::Utils::Console
         };
 
         public:
-        static void ToFile()
+        /** Use this at the start of your program to enable dumping all logs to files.
+         * When used enables saving all logs to file with the date & time the program was executed in specified directory.
+         *
+         * @param logDir Directory where to save logs
+         */
+        static void ToFile(std::string logDir)
         {
-            std::string logDir = GetLogsDir();
             std::filesystem::create_directories(logDir);
 
             logFilePath = std::format("{}/{}.log", logDir, Time());
@@ -44,6 +47,12 @@ namespace stardustvulpine::Utils::Console
             }
         }
 
+        /** Basic log print for everyday logging with no severity and colors.
+         *
+         * @tparam Args
+         * @param msg Message format.
+         * @param args Format arguments.
+         */
         template<class... Args> static void Print(const std::string_view msg, Args&&... args)
         {
             std::string message;
@@ -145,10 +154,15 @@ namespace stardustvulpine::Utils::Console
         }
 
         private:
-        static inline bool saveLogs;
-        static inline std::filesystem::path logFilePath;
-        static inline std::ofstream logFile;
+        static inline bool saveLogs; // ON/OFF switch for saving logs to file
+        static inline std::filesystem::path logFilePath; // Path for current log file
+        static inline std::ofstream logFile; // Filestream for currently opened log file
 
+        /** Actual print method for formatting and printing final log message witch severity, date & time and color.
+         *
+         * @param severity Log severity. Choose from Log::Severity enum.
+         * @param msg Log message to be printed.
+         */
         static void PrintLog(const Severity severity, const std::string& msg)
         {
             std::string GREEN = "\033[38;2;0;255;1m";

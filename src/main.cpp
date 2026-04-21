@@ -3,6 +3,8 @@
 //
 
 #include "Bot.hpp"
+#include <SQLiteCpp/SQLiteCpp.h>
+#include <Common.hpp>
 
 int main ()
 {
@@ -20,7 +22,7 @@ int main ()
     }*/
 
 
-    Log::ToFile();
+    Log::ToFile(wdb::Common::GetLogsDir());
     wdb::discord::Bot bot;
     bot.Start();
 

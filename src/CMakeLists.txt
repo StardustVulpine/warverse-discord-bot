@@ -12,6 +12,9 @@ set(LIB_LINK_TARGETS
         nlohmann_json::nlohmann_json
         ${SQLite3_LIBRARIES}
         SQLiteCpp
+
+        wdb_commands
+        wdb_database
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_LINK_TARGETS})
 
@@ -21,4 +24,8 @@ set(LIB_DEPENDENCY_LIST
 )
 add_dependencies(${PROJECT_NAME} ${LIB_DEPENDENCY_LIST})
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/utils ${SQLite3_INCLUDE_DIRS} )
+set(INCLUDE_DIR
+    ${CMAKE_SOURCE_DIR}/utils
+    ${CMAKE_SOURCE_DIR}/db
+)
+target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR} ${SQLite3_INCLUDE_DIRS} )

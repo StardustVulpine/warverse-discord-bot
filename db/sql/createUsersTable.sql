@@ -1,0 +1,5 @@
+CREATE TABLE "Users"
+(
+    "ID" INTEGER NOT NULL UNIQUE, "DiscordUsername" TEXT NOT NULL, "DiscordID" NUMERIC NOT NULL, "FractionID" INTEGER,
+    PRIMARY KEY("ID" AUTOINCREMENT), FOREIGN KEY("FractionID") REFERENCES "Fractions"("ID")
+);

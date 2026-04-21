@@ -4,8 +4,9 @@
 #pragma once
 #include <dpp/dpp.h>
 #include <nlohmann/json.hpp>
-#include <sqlite3.h>
-#include <Utils.hpp>
+#include <stardustvulpine/Utils.hpp>
+#include <DBManager.hpp>
+#include <Common.hpp>
 
 using json = nlohmann::json;
 using Log = stardustvulpine::Utils::Console::Log;
@@ -39,10 +40,12 @@ namespace wdb::discord
         void Start();
 
         private:
+        db::DBManager m_dbManager;
+
         static std::string GetToken()
         {
             Log::Trace("Bot::GetToken()");
-            std::string tokenPath = std::format("{}/.token", stardustvulpine::Utils::GetAppDir());
+            std::string tokenPath = std::format("{}/.token", Common::GetAppDir());
             if (!std::filesystem::exists(tokenPath))
             {
                 Log::Warning("Token not found. Provide token first: ");

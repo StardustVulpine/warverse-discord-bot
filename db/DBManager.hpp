@@ -5,8 +5,6 @@
 #pragma once
 
 #include <SQLiteCpp/SQLiteCpp.h>
-#include <filesystem>
-#include <fstream>
 #include <string>
 
 namespace wdb::db
@@ -14,25 +12,20 @@ namespace wdb::db
     class DBManager
     {
         public:
-        static void OpenDatabase()
-        {
+        DBManager();
+        ~DBManager() = default;
 
-        }
+        [[nodiscard]] SQLite::Database *GetDatabase() const;
+        void SetDatabase(SQLite::Database *db);
+
+        void CreateDatabase();
+        void OpenDatabase();
 
 
         private:
-        SQLite::Database db;
+        std::filesystem::path m_DatabasePath;
+        SQLite::Database *m_Database{};
 
-        static std::string GetQueryFromSQLFile(const std::string& queryPath)
-        {
-            std::fstream fs(queryPath);
-            const uintmax_t filesize = std::filesystem::file_size(queryPath);
-            auto buffer = std::make_unique<char[]>(filesize + 1);
-            fs.read(buffer.get(), static_cast<std::streamsize>(filesize));
-            buffer[filesize] = '\0';
-
-            return buffer.get();
-        }
-
+        static std::string GetQueryFromSQLFile(const std::filesystem::path &queryPath);
     };
 } // wdb
