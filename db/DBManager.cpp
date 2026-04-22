@@ -27,16 +27,10 @@ namespace wdb::db
         }
     }
 
-    SQLite::Database *DBManager::GetDatabase() const
+    SQLite::Database &DBManager::GetDatabase() const
     {
-        return m_Database;
+        return *m_Database;
     }
-
-    void DBManager::SetDatabase(SQLite::Database *db)
-    {
-        m_Database = db;
-    }
-
 
     void DBManager::CreateDatabase() const
     {
@@ -67,7 +61,7 @@ namespace wdb::db
     void DBManager::OpenDatabase()
     {
         Log::Trace("Opening database...");
-        m_Database = new SQLite::Database(m_DatabasePath, SQLite::OPEN_READWRITE, -1);
+        m_Database = std::make_unique<SQLite::Database>(m_DatabasePath, SQLite::OPEN_READWRITE, -1);
         Log::Info("Database Loaded!");
     }
 

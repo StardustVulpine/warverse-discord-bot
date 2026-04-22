@@ -21,6 +21,7 @@ namespace wdb::discord
         Bot() : mBotCluster(GetToken(), dpp::i_default_intents)
         {
             //mBotCluster.on_log(dpp::utility::cout_logger());
+            m_dbManager = std::make_unique<db::DBManager>();
             SetLogger();
         }
         explicit Bot(const std::string& token) : mBotCluster(token)
@@ -40,7 +41,7 @@ namespace wdb::discord
         void Start();
 
         private:
-        db::DBManager m_dbManager;
+        std::unique_ptr<db::DBManager> m_dbManager;
 
         static std::string GetToken()
         {

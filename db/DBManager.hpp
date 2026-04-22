@@ -18,19 +18,18 @@ namespace wdb::db
         DBManager();
         ~DBManager() = default;
 
-        [[nodiscard]] SQLite::Database *GetDatabase() const;
-        void SetDatabase(SQLite::Database *db);
+        [[nodiscard]] SQLite::Database &GetDatabase() const;
 
         void CreateDatabase() const;
         void CreateTables() const;
         void OpenDatabase();
 
         void AddNewUser(std::string discordUsername, int64_t discordID) const;
-        std::string GetAllUsers() const;
+        [[nodiscard]] std::string GetAllUsers() const;
 
         private:
         std::filesystem::path m_DatabasePath;
-        SQLite::Database *m_Database{};
+        std::unique_ptr<SQLite::Database> m_Database{};
 
         static std::string GetQueryFromSQLFile(const std::filesystem::path &queryPath)
         {

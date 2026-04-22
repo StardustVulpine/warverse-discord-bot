@@ -80,10 +80,23 @@ namespace wdb::discord
                 dpp::user user = event.command.get_resolved_user(
                     std::get<dpp::snowflake>(event.get_parameter("user")));
 
-                m_dbManager.AddNewUser(user.username, user.id);
-                const std::string reply = std::format(R"(User '{}' with ID '{}' has been added to database.)",
-                    user.username, std::to_string(user.id));
-                event.reply(dpp::message(reply));
+                try
+                {
+                    m_dbManager->AddNewUser(user.username, user.id);
+                    const std::string reply = std::format(R"(User '{}' with ID '{}' has been added to database.)",
+                        user.username, std::to_string(user.id));
+                    event.reply(dpp::message(reply));
+                }
+                catch (std::exception &e)
+                {
+                    Log::Error(e.what());
+                    if (!std::string(e.what()).compare("UNIQUE constraint failed: Users.DiscordID"))
+                    {
+                        const std::string reply = std::format(R"(User '{}' with ID '{}' already exists in database.)",
+                            user.username, std::to_string(user.id));
+                        event.reply(dpp::message(reply));
+                    }
+                }
             }
         });
 
@@ -91,7 +104,7 @@ namespace wdb::discord
         {
             if (event.command.get_command_name() == "show_users")
             {
-                event.reply(dpp::message(m_dbManager.GetAllUsers()));
+                event.reply(dpp::message(m_dbManager->GetAllUsers()));
             }
         });
 
