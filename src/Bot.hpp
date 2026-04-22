@@ -40,6 +40,11 @@ namespace wdb::discord
 
         void Start();
 
+        std::unique_ptr<db::DBManager> *GetDBManager()
+        {
+            return &m_dbManager;
+        }
+
         private:
         std::unique_ptr<db::DBManager> m_dbManager;
 

@@ -1,23 +1,20 @@
 {
-  "User 1":
-  {
+  "User 1": {
     "ID": "1",
     "discordUsername": "username",
     "discordID": "123456789012345678",
-    "FractionID": "null"
+    "FractionID": "fraction name"
   },
-  "User 2":
-  {
+  "User 2": {
     "ID": "2",
     "discordUsername": "username",
     "discordID": "123456789012345678",
-    "FractionID": "null"
+    "FractionID": "another fraction"
   },
-  "User 3":
-  {
+  "User 3": {
     "ID": "3",
     "discordUsername": "username",
     "discordID": "123456789012345678",
-    "FractionID": "null"
+    "FractionID": "fraction1251532"
   }
 }

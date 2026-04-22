@@ -108,6 +108,14 @@ namespace wdb::discord
             }
         });
 
+        mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event)
+        {
+            if (event.command.get_command_name() == "show_fractions")
+            {
+                event.reply(dpp::message(m_dbManager->GetAllFractions()));
+            }
+        });
+
 
         // Listen for leveling bot messages and catch mentioned user.
         mBotCluster.on_message_create([](const dpp::message_create_t& event) {
@@ -151,6 +159,7 @@ namespace wdb::discord
                     dpp::co_mentionable, "user", "The user to add", true));
 
                 Commands.emplace_back("show_users", "List all users in database", mBotCluster.me.id);
+                Commands.emplace_back("show_fractions", "List all users in database", mBotCluster.me.id);
 
                 mBotCluster.guild_bulk_command_create(Commands, TEST_GUILD_ID);
             }

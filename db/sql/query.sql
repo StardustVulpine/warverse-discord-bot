@@ -27,3 +27,6 @@ CREATE TABLE "Fractions"
 
 -- Insert new user into Users table
 INSERT INTO Users (DiscordUsername, DiscordID) VALUES ('', '')
+
+-- Get fraction name by its ID
+SELECT Name FROM Fractions WHERE ID = '{}'

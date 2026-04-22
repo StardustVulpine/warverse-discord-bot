@@ -6,6 +6,7 @@
 
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <string>
+#include <nlohmann/json.hpp>
 #include <stardustvulpine/Utils.hpp>
 
 using Log = stardustvulpine::Utils::Console::Log;
@@ -26,6 +27,8 @@ namespace wdb::db
 
         void AddNewUser(std::string discordUsername, int64_t discordID) const;
         [[nodiscard]] std::string GetAllUsers() const;
+        [[nodiscard]]std::string GetFractionNameByID(int id) const;
+        [[nodiscard]]std::string GetAllFractions() const;
 
         private:
         std::filesystem::path m_DatabasePath;
