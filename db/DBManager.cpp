@@ -69,8 +69,15 @@ namespace wdb::db
     void DBManager::OpenDatabase()
     {
         Log::Trace("Opening database...");
+        BackupDatabase();
         m_Database = std::make_unique<SQLite::Database>(m_DatabasePath, SQLite::OPEN_READWRITE, -1);
         Log::Info("Database Loaded!");
+    }
+
+    void DBManager::BackupDatabase() const
+    {
+        const std::filesystem::path backupPath = Common::GetDatabaseDir() + "/database.db.backup";
+        std::filesystem::copy_file(m_DatabasePath, backupPath, std::filesystem::copy_options::overwrite_existing);
     }
 
     void DBManager::AddNewUser(std::string discordUsername, int64_t discordID) const
@@ -82,6 +89,7 @@ namespace wdb::db
             discordUsername, discordID);
         Log::Trace("Query to be executed:\n{}", query);
         SQLite::Statement(*m_Database, query).exec();
+        Log::Info("User {} added to database!", discordUsername);
     }
 
     std::string DBManager::GetAllUsers() const

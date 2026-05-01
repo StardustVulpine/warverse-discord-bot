@@ -9,12 +9,12 @@ int main ()
 {
     stardustvulpine::Utils::Console::Log::ToFile(wdb::Common::GetLogsDir());
 
-    wdb::discord::Bot bot;
+    wdb::Bot bot;
 
     Log::Debug(std::string(bot.GetDBManager()->get()->GetAllUsers()));
     Log::Debug(std::string(bot.GetDBManager()->get()->GetAllFractions()));
 
-    bot.Start();
+    bot.Run();
 
     return 0;
 }

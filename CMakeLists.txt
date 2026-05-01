@@ -14,8 +14,6 @@ find_package(SQLite3 REQUIRED)
 find_package(SQLiteCpp REQUIRED)
 
 # Libraries
-add_subdirectory(commands)
-#add_subdirectory(logger)
 add_subdirectory(db)
 
 # Sources

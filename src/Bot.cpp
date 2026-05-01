@@ -4,27 +4,49 @@
 
 #include "Bot.hpp"
 
-namespace wdb::discord
+
+namespace wdb
 {
     constexpr dpp::snowflake TEST_GUILD_ID = 1486723392718639156;
 
-    void Bot::UpdateEvents()
+    void Bot::UpdateCommands()
     {
-        Log::Trace("Bot::UpdateEvents updating bot events...");
+        Log::Trace("{} {}", __func__, " updating bot events...");
 
-        mBotCluster.on_slashcommand([](const dpp::slashcommand_t& event) {
-            if (event.command.get_command_name() == "ping") {
-                std::string issuingUsername = event.command.get_issuing_user().username;
-                Log::Print("{} used command: {}", issuingUsername, event.command.get_command_name());
+        /* Add new command template:
+        mCommandManager.Add(
+        "",
+        "",
+        {},
+        [this](const dpp::slashcommand_t& event)
+        {
 
-                dpp::snowflake userID = event.command.get_issuing_user().id;
-                event.reply(std::format("Pong! <@{}>", std::to_string(userID)));
-            }
+        });
+        */
+
+        mCommandManager.Add(
+        "ping",
+        "Ping Pong",
+        {},
+        [](const dpp::slashcommand_t& event)
+        {
+            std::string issuingUsername = event.command.get_issuing_user().username;
+            Log::Print("{} used command: {}", issuingUsername, event.command.get_command_name());
+
+            dpp::snowflake userID = event.command.get_issuing_user().id;
+            event.reply(std::format("Pong dong! <@{}>", std::to_string(userID)));
         });
 
-        mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event) {
-            if (event.command.get_command_name() == "pm") {
-                std::string issuingUsername = event.command.get_issuing_user().username;
+        mCommandManager.Add(
+        "dm",
+        "Sends a direct message to a user",
+        {
+            dpp::command_option(dpp::co_mentionable, "user", "The user to message", false),
+            dpp::command_option(dpp::co_string, "message", "The message to send", false)
+        },
+        [this](const dpp::slashcommand_t& event)
+        {
+            std::string issuingUsername = event.command.get_issuing_user().username;
                 Log::Print("{} used command: {}", issuingUsername, event.command.get_command_name());
 
                 dpp::snowflake user;
@@ -66,14 +88,15 @@ namespace wdb::discord
                         event.reply(dpp::message("I've sent a message to that user.")/*.set_flags(dpp::m_ephemeral)*/);
                     }
                 });
-            }
         });
 
-        mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event)
+        mCommandManager.Add(
+        "add_user",
+        "Add user to database",
+        {dpp::command_option(dpp::co_mentionable, "user", "The user to add", true)},
+        [this](const dpp::slashcommand_t& event)
         {
-            if (event.command.get_command_name() == "add_user")
-            {
-                if (event.get_parameter("user").index() == 0) {
+            if (event.get_parameter("user").index() == 0) {
                     event.reply(dpp::message("Couldn't add user. No user provided.").set_flags(dpp::m_ephemeral));
                     return;
                 }
@@ -97,25 +120,25 @@ namespace wdb::discord
                         event.reply(dpp::message(reply));
                     }
                 }
-            }
         });
 
-        mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event)
+        mCommandManager.Add(
+        "show_users",
+        "List all users in database",
+        {},
+        [this](const dpp::slashcommand_t& event)
         {
-            if (event.command.get_command_name() == "show_users")
-            {
-                event.reply(dpp::message(m_dbManager->GetAllUsers()));
-            }
+            event.reply(dpp::message(m_dbManager->GetAllUsers()));
         });
 
-        mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event)
+        mCommandManager.Add(
+        "show_fractions",
+        "List all fractions in database",
+        {},
+        [this](const dpp::slashcommand_t& event)
         {
-            if (event.command.get_command_name() == "show_fractions")
-            {
-                event.reply(dpp::message(m_dbManager->GetAllFractions()));
-            }
+            event.reply(dpp::message(m_dbManager->GetAllFractions()));
         });
-
 
         // Listen for leveling bot messages and catch mentioned user.
         mBotCluster.on_message_create([](const dpp::message_create_t& event) {
@@ -137,40 +160,9 @@ namespace wdb::discord
         });
     }
 
-    void Bot::RegisterCommands()
+    void Bot::Run()
     {
-        Log::Trace("Registering bot commands...");
-        mBotCluster.on_ready([this](const dpp::ready_t&) {
-            if (dpp::run_once<struct register_guild_commands>())
-            {
-                std::vector<dpp::slashcommand> Commands;
-
-                Commands.emplace_back("ping", "Ping pong!", mBotCluster.me.id);
-
-                auto& pm = Commands.emplace_back("pm", "Send a private message.", mBotCluster.me.id);
-                pm.add_option(dpp::command_option(
-                        dpp::co_mentionable, "user", "The user to message", false));
-                pm.add_option(dpp::command_option(
-                        dpp::co_string, "message", "The message to send", false));
-
-                auto& add_user = Commands.emplace_back(
-                    "add_user", "Add user to database", mBotCluster.me.id);
-                add_user.add_option(dpp::command_option(
-                    dpp::co_mentionable, "user", "The user to add", true));
-
-                Commands.emplace_back("show_users", "List all users in database", mBotCluster.me.id);
-                Commands.emplace_back("show_fractions", "List all users in database", mBotCluster.me.id);
-
-                mBotCluster.guild_bulk_command_create(Commands, TEST_GUILD_ID);
-            }
-        });
-        Log::Info("Commands registered!");
-    }
-
-    void Bot::Start()
-    {
-        UpdateEvents();
-        RegisterCommands();
+        UpdateCommands();
         Log::Info("Bot started!");
         mBotCluster.start(dpp::st_wait);
     }

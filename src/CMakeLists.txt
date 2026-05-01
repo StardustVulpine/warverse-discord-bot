@@ -7,21 +7,19 @@ set(EXECUTABLES_LIST
 )
 add_executable(${PROJECT_NAME} ${EXECUTABLES_LIST})
 
+set(LIB_DEPENDENCY_LIST
+        wdb_database
+)
+
 set(LIB_LINK_TARGETS
         dpp::dpp
         nlohmann_json::nlohmann_json
         ${SQLite3_LIBRARIES}
         SQLiteCpp
-
-        wdb_commands
-        wdb_database
+        ${LIB_DEPENDENCY_LIST}
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_LINK_TARGETS})
 
-set(LIB_DEPENDENCY_LIST
-        wdb_commands
-        wdb_database
-)
 add_dependencies(${PROJECT_NAME} ${LIB_DEPENDENCY_LIST})
 
 set(INCLUDE_DIR

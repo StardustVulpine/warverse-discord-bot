@@ -7,11 +7,12 @@
 #include <stardustvulpine/Utils.hpp>
 #include <DBManager.hpp>
 #include <Common.hpp>
+#include "CommandManager.hpp"
 
 using json = nlohmann::json;
 using Log = stardustvulpine::Utils::Console::Log;
 
-namespace wdb::discord
+namespace wdb
 {
     class Bot
     {
@@ -20,13 +21,18 @@ namespace wdb::discord
 
         Bot() : mBotCluster(GetToken(), dpp::i_default_intents)
         {
-            //mBotCluster.on_log(dpp::utility::cout_logger());
+
             m_dbManager = std::make_unique<db::DBManager>();
             SetLogger();
-        }
-        explicit Bot(const std::string& token) : mBotCluster(token)
-        {
-            SetLogger();
+
+            mBotCluster.on_ready([this](const dpp::ready_t&){
+                mCommandManager.RegisterCommands(mBotCluster);
+            });
+
+            mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event) {
+                mCommandManager.HandleIncomingCommand(event);
+            });
+
         }
 
         ~Bot() = default;
@@ -38,7 +44,7 @@ namespace wdb::discord
         Bot& operator=(Bot&&) = delete;
 
 
-        void Start();
+        void Run();
 
         std::unique_ptr<db::DBManager> *GetDBManager()
         {
@@ -47,6 +53,7 @@ namespace wdb::discord
 
         private:
         std::unique_ptr<db::DBManager> m_dbManager;
+        commands::CommandManager mCommandManager;
 
         static std::string GetToken()
         {
@@ -112,8 +119,6 @@ namespace wdb::discord
             });
             Log::Trace("Logger set!");
         }
-        void UpdateEvents();
-        void RegisterCommands();
-
+        void UpdateCommands();
     };
 }
