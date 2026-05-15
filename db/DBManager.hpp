@@ -9,7 +9,9 @@
 #include <nlohmann/json.hpp>
 #include <stardustvulpine/Utils.hpp>
 
+using json = nlohmann::json;
 using Log = stardustvulpine::Utils::Console::Log;
+using DiscordID = int64_t;
 
 namespace wdb::db
 {
@@ -26,10 +28,11 @@ namespace wdb::db
         void OpenDatabase();
         void BackupDatabase() const;
 
-        void AddNewUser(std::string discordUsername, int64_t discordID) const;
-        [[nodiscard]] std::string GetAllUsers() const;
-        [[nodiscard]]std::string GetFractionNameByID(int id) const;
-        [[nodiscard]]std::string GetAllFractions() const;
+        void AddNewUser(std::string discordUsername, DiscordID discordUserID) const;
+        [[nodiscard]] json GetAllUsers() const;
+        [[nodiscard]] std::string GetFractionNameByID(int id) const;
+        void AddNewFraction(std::string name, std::string description, DiscordID discordRoleID) const;
+        [[nodiscard]] std::string GetAllFractions() const;
 
         private:
         std::filesystem::path m_DatabasePath;

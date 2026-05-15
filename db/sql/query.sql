@@ -18,7 +18,9 @@ CREATE TABLE "Users"
 CREATE TABLE "Fractions"
 (
     "ID" INTEGER NOT NULL UNIQUE,
-    "Name" TEXT, "Description" TEXT,
+    "Name" TEXT,
+    "Description" TEXT,
+    "DiscordRoleID" NUMERIC NOT NULL UNIQUE,
     "CurrentExp" NUMERIC,
     "ExpToNextLevel" NUMERIC,
     "Level" INTEGER,

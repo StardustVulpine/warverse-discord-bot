@@ -17,14 +17,24 @@ namespace wdb::commands
     // Definition of lambda function structure that takes dpp::slashcommand_t as parameter and returns nothing
     using CommandCallbackFunction = std::function<void(const dpp::slashcommand_t&)>;
 
+    // Definition of subcommand structure
+    struct SubCommand
+    {
+        std::string sName;
+        std::string sDescription;
+        std::vector<dpp::command_option> sOptions;
+        CommandCallbackFunction sCallbackFunction;
+    };
+
     // Definition of command structure
     struct Command
     {
         std::string cName;
         std::string cDescription;
-        std::vector<dpp::command_option> cOptions;
-        CommandCallbackFunction cCallbackAction;
-
+        uint64_t requiredPermissions{};
+        std::vector<dpp::command_option> cOptions{};
+        CommandCallbackFunction cCallbackFunction{};
+        std::map<std::string, SubCommand> cSubCommands{};
     };
 
     class CommandManager
@@ -34,17 +44,31 @@ namespace wdb::commands
         std::map<std::string, Command> mCommandsMap;
 
     public:
-        // Adding command to memory
-        void Add(const std::string& name, const std::string& description,
-            const std::vector<dpp::command_option>& options, const CommandCallbackFunction& callback)
+        // Adding command to registry
+        void NewCommand(const std::string& commandName, const std::string& commandDescription, const uint64_t requiredPermissions,
+            const std::vector<dpp::command_option>& commandOptions, const CommandCallbackFunction& commandCallback)
         {
-            mCommandsMap[name] = {
-                name,
-                description,
-                options,
-                callback
+            mCommandsMap[commandName] = {
+                commandName,
+                commandDescription,
+                requiredPermissions,
+                commandOptions,
+                commandCallback
             };
         }
+
+        void AddSubCommand(const std::string& rootCommandName, const std::string& subCommandName,
+            const std::string& subCommandDescription, const std::vector<dpp::command_option>& subCommandOptions,
+            const CommandCallbackFunction& subCommandCallback)
+        {
+            mCommandsMap[rootCommandName].cSubCommands[subCommandName] = {
+                subCommandName,
+                subCommandDescription,
+                subCommandOptions,
+                subCommandCallback
+            };
+        }
+
 
         // Registering all mapped commands to Discord
         void RegisterCommands(dpp::cluster& botCluster)
@@ -63,27 +87,70 @@ namespace wdb::commands
                         botCluster.me.id
                     );
 
+                    if (command.requiredPermissions > 0)
+                    {
+                        newCommand.set_default_permissions(command.requiredPermissions);
+                        newCommand.set_dm_permission(false);
+                    }
+
                     // Loop through all command's options and add them to command
                     for (auto const& commandParam : command.cOptions) {
                         newCommand.add_option(commandParam);
                     }
+                    // Loop through all command's subcommands and add them to command
+                    for (auto const& [subCommandNameKey, subCommand] : command.cSubCommands)
+                    {
+                        // Create new raw subcommand
+                        dpp::command_option subOption(dpp::co_sub_command, subCommand.sName, subCommand.sDescription);
+
+                        // Loop through all sub-command's options and add them to sub-command
+                        for (auto const& subCommandParam : subCommand.sOptions) {
+                            subOption.add_option(subCommandParam);
+                        }
+
+                        // Add sub-command to main command
+                        newCommand.add_option(subOption);
+                    }
 
                     commandsList.push_back(newCommand); // Push created raw command to vector
                 }
+#ifdef DEBUG
                 botCluster.guild_bulk_command_create(commandsList, TEST_GUILD_ID);
+#else
+                botCluster.global_bulk_command_create(commandsList);
+#endif
             }
         }
         // Handling event when user sends command
         void HandleIncomingCommand(const dpp::slashcommand_t& incomingCommandEvent)
         {
             // Extract command name and search for it in map
-            std::string incomingCommandName = incomingCommandEvent.command.get_command_name();
-            auto commandIterator = mCommandsMap.find(incomingCommandName);
+            const std::string incomingCommandName = incomingCommandEvent.command.get_command_name();
+            if (const auto commandIterator = mCommandsMap.find(incomingCommandName); commandIterator != mCommandsMap.end())
+            {
+                // Grab subcommands stored as interaction and check if it's not empty or is of type co_sub_command
+                dpp::command_interaction interaction = incomingCommandEvent.command.get_command_interaction();
+                if (!interaction.options.empty() && interaction.options[0].type == dpp::co_sub_command)
+                {
+                    // Get subcommand name and search for it in map
+                    const std::string subCommandName = interaction.options[0].name;
+                    const auto subCommandIterator = commandIterator->second.cSubCommands.find(subCommandName);
+                    if (subCommandIterator != commandIterator->second.cSubCommands.end()) {
+                        // Run subcommand's lambda function
+                        subCommandIterator->second.sCallbackFunction(incomingCommandEvent);
+                        return;
+                    }
+                }
 
-            // If found in map, grab lambda associated with command and execute it
-            if (commandIterator != mCommandsMap.end()) {
-                commandIterator->second.cCallbackAction(incomingCommandEvent);
+                // If subcommand was not found/triggered, run main command's lambda function if exists
+                if (commandIterator->second.cCallbackFunction) {
+                    commandIterator->second.cCallbackFunction(incomingCommandEvent);
+                }
             }
+        }
+
+        const std::map<std::string, Command>& GetAllCommands() const {
+            return mCommandsMap;
         }
 
     };

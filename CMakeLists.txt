@@ -4,6 +4,8 @@ project(wdb)
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     add_compile_options(-Wall -Wextra -Werror)
+    add_compile_options(-Wno-format-nonliteral)
+    add_compile_options(-Wno-invalid-constexpr)
     add_compile_definitions(DEBUG)
 endif ()
 

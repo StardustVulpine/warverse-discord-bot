@@ -3,6 +3,7 @@
 //
 
 #include "DBManager.hpp"
+#include "SQLQueries.hpp"
 
 #include <fstream>
 #include <filesystem>
@@ -13,8 +14,6 @@
 #include <dpp/nlohmann/json_fwd.hpp>
 #include <dpp/nlohmann/json_fwd.hpp>
 #include <nlohmann/json.hpp>
-
-using json = nlohmann::json;
 
 namespace wdb::db
 {
@@ -55,13 +54,13 @@ namespace wdb::db
         if (!m_Database->tableExists("Users"))
         {
             Log::Debug("Creating database 'Users' table...");
-            SQLite::Statement(*m_Database, GetQueryFromSQLFile("../../../db/sql/createUsersTable.sql")).exec();
+            SQLite::Statement(*m_Database, sql_queries::CREATE_USERS_TABLE).exec();
         }
 
         if (!m_Database->tableExists("Fractions"))
         {
             Log::Debug("Creating database 'Fractions' table...");
-            SQLite::Statement(*m_Database, GetQueryFromSQLFile("../../../db/sql/createFractionsTable.sql")).exec();
+            SQLite::Statement(*m_Database, sql_queries::CREATE_FRACTIONS_TABLE).exec();
         }
         Log::Info("Database tables created!");
     }
@@ -80,48 +79,39 @@ namespace wdb::db
         std::filesystem::copy_file(m_DatabasePath, backupPath, std::filesystem::copy_options::overwrite_existing);
     }
 
-    void DBManager::AddNewUser(std::string discordUsername, int64_t discordID) const
+    void DBManager::AddNewUser(std::string discordUsername, int64_t discordUserID) const
     {
         Log::Trace("DBManager::AddNewUser()");
 
+
         std::string query = std::format(
             R"(INSERT INTO Users (DiscordUsername, DiscordID) VALUES ('{}', '{}'))",
-            discordUsername, discordID);
+            discordUsername, discordUserID);
         Log::Trace("Query to be executed:\n{}", query);
         SQLite::Statement(*m_Database, query).exec();
         Log::Info("User {} added to database!", discordUsername);
     }
 
-    std::string DBManager::GetAllUsers() const
+    json DBManager::GetAllUsers() const
     {
-        Log::Trace("DBManager::GetAllUsers()");
-        SQLite::Statement query(*m_Database, "SELECT * FROM Users");
+        Log::Trace(__func__);
+        SQLite::Statement query(*m_Database, sql_queries::GET_ALL_USERS);
         Log::Trace("Query sent.");
 
-        int userCount = 0;
-        nlohmann::ordered_json usersAll;
+        json results = json::array();
 
         while (query.executeStep())
         {
-            userCount++;
-            Log::Trace("Getting user: {}", userCount);
-
-            nlohmann::ordered_json user;
-
+            nlohmann::json user;
             user["ID"] = query.getColumn(0);
             user["discordUsername"] = query.getColumn(1);
             user["discordID"] = query.getColumn(2);
             user["Fraction"] = GetFractionNameByID(query.getColumn(3));
-
-            Log::Debug("Got all user's fields from database. Preparing json object...");
-
-            const std::string userKey = std::format("User {}", userCount);
-
-            usersAll[userKey] = user;
+            results.push_back(user);
         }
         Log::Trace("Json created!");
-        Log::Debug(usersAll.dump(4));
-        return usersAll.dump(4);
+        Log::Debug(results.dump(0));
+        return results;
     }
 
     std::string DBManager::GetFractionNameByID(int id) const
@@ -135,9 +125,21 @@ namespace wdb::db
         return fractionName;
     }
 
+    void DBManager::AddNewFraction(std::string name, std::string description, DiscordID discordRoleID) const
+    {
+        Log::Trace(__func__);
+
+        std::string query = std::format(
+            R"(INSERT INTO Fractions (Name, Description, DiscordRoleID) VALUES ('{}', '{}', '{}'))",
+            name, description, discordRoleID);
+        Log::Trace("Query to be executed:\n{}", query);
+        SQLite::Statement(*m_Database, query).exec();
+        Log::Info("Fraction {} added to database succesfully!", name);
+    }
+
     std::string DBManager::GetAllFractions() const
     {
-        Log::Trace("DBManager::GetAllFractions()");
+        Log::Trace(__func__);
         SQLite::Statement query(*m_Database, "SELECT * FROM Fractions");
         Log::Trace("Query sent.");
 
@@ -169,3 +171,5 @@ namespace wdb::db
         return fractionsAll.dump(4);
     }
 }
+
+

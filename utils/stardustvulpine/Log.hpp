@@ -31,10 +31,9 @@ namespace stardustvulpine::Utils::Console
          *
          * @param logDir Directory where to save logs
          */
-        static void ToFile(std::string logDir)
+        static void ToFile(const std::string& logDir)
         {
             std::filesystem::create_directories(logDir);
-
             logFilePath = std::format("{}/{}.log", logDir, Time());
             try
             {
@@ -56,7 +55,7 @@ namespace stardustvulpine::Utils::Console
         template<class... Args> static void Print(const std::string_view msg, Args&&... args)
         {
             std::string message;
-            if (sizeof ... (args) == 0)
+            if constexpr (sizeof ... (args) == 0)
             {
                 message = std::string(msg);
             }
@@ -69,7 +68,7 @@ namespace stardustvulpine::Utils::Console
         template<class... Args> static void Info(const std::string_view msg, Args&&... args)
         {
             std::string message;
-            if (sizeof ... (args) == 0)
+            if constexpr (sizeof ... (args) == 0)
             {
                 message = std::string(msg);
             }
@@ -83,7 +82,7 @@ namespace stardustvulpine::Utils::Console
         {
 #ifdef DEBUG
             std::string message;
-            if (sizeof ... (args) == 0)
+            if constexpr (sizeof ... (args) == 0)
             {
                 message = std::string(msg);
             }
@@ -99,7 +98,7 @@ namespace stardustvulpine::Utils::Console
         {
 #ifdef DEBUG
             std::string message;
-            if (sizeof ... (args) == 0)
+            if constexpr (sizeof ... (args) == 0)
             {
                 message = std::string(msg);
             }
@@ -114,7 +113,7 @@ namespace stardustvulpine::Utils::Console
         template<class... Args> static void Warning(const std::string_view msg, Args&&... args)
         {
             std::string message;
-            if (sizeof ... (args) == 0)
+            if constexpr (sizeof ... (args) == 0)
             {
                 message = std::string(msg);
             }
@@ -128,7 +127,7 @@ namespace stardustvulpine::Utils::Console
         template<class... Args> static void Error(const std::string_view msg, Args&&... args)
         {
             std::string message;
-            if (sizeof ... (args) == 0)
+            if constexpr (sizeof ... (args) == 0)
             {
                 message = std::string(msg);
             }
@@ -142,7 +141,7 @@ namespace stardustvulpine::Utils::Console
         template<class... Args> static void Critical(const std::string_view msg, Args&&... args)
         {
             std::string message;
-            if (sizeof ... (args) == 0)
+            if constexpr (sizeof ... (args) == 0)
             {
                 message = std::string(msg);
             }
@@ -175,6 +174,7 @@ namespace stardustvulpine::Utils::Console
 
             std::string col;
             std::string level;
+
             switch (severity)
             {
                 case Severity::INFO_L:

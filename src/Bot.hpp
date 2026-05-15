@@ -119,6 +119,7 @@ namespace wdb
             });
             Log::Trace("Logger set!");
         }
-        void UpdateCommands();
+        void Commands();
+        void MessageListeners();
     };
 }
