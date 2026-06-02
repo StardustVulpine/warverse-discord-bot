@@ -9,18 +9,7 @@ namespace wdb
 {
     void Bot::Commands()
     {
-        Log::Trace("{} {}", __func__, " updating bot events...");
-
-        /* Add new command template:
-        mCommandManager.NewCommand(
-        "",
-        "",
-        {},
-        [this](const dpp::slashcommand_t& event)
-        {
-
-        });
-        */
+        Log::Trace("{} {}", __func__, " updating bot commands...");
 
         mCommandManager.NewCommand(
         "help",
@@ -158,12 +147,17 @@ namespace wdb
                     event.reply(replyMsg);
                 }
                 catch (SQLite::Exception &e) {
-                    Log::Error("SQLite Error " + std::to_string(e.getErrorCode()) + ": " + e.what());
-                    if (e.getErrorCode() == 19) // SQLITE UNIQUE constraint failed error
+                    Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                    if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
                     {
-                        const std::string reply = std::format(R"(User '{}' with ID '{}' already exists in database.)",
-                            user.username, std::to_string(user.id));
-                        event.reply(dpp::message(reply));
+                        dpp::message replyMsg;
+                        replyMsg.add_embed(dpp::embed()
+                            .set_title(":x: User already exists in database!")
+                            .set_color(dpp::colors::red)
+                            .set_description(std::format("**User:** <@{}>\n**ID:** `{}`",
+                                std::to_string(user.id), std::to_string(user.id)))
+                            .set_thumbnail(user.get_avatar_url()));
+                        event.reply(replyMsg);
                     }
                 }
             }
@@ -196,9 +190,9 @@ namespace wdb
                         name, std::to_string(fractionRole.id));
                     event.reply(dpp::message(reply));
                 }
-                catch (std::exception &e) {
-                    Log::Error(e.what());
-                    if (std::string(e.what()) == "UNIQUE constraint failed: Fractions.DiscordRoleID")
+                catch (SQLite::Exception &e) {
+                    Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                    if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
                     {
                         const std::string reply = std::format(R"(Fraction with assigned role <@&{}> already exists in database.)",
                             std::to_string(fractionRole.id));
@@ -210,12 +204,12 @@ namespace wdb
 
         mCommandManager.NewCommand(
         "show",
-        "",
+        "Shows users/fractions in DB",
         0,
         {},
         nullptr
         );
-        mCommandManager.AddSubCommand(
+        /*mCommandManager.AddSubCommand(
             "show",
             "users",
             "List all users in database",
@@ -229,7 +223,7 @@ namespace wdb
 
                 event.reply(replyMsg);
             }
-        );
+        );*/
         mCommandManager.AddSubCommand(
             "show",
             "fractions",
@@ -246,7 +240,7 @@ namespace wdb
         "test of a button",
         0,
         {},
-        [this](const dpp::slashcommand_t& event)
+        [](const dpp::slashcommand_t& event)
         {
             dpp::message msg(event.command.channel_id, "this text has a button");
 
@@ -262,7 +256,7 @@ namespace wdb
             event.reply(msg);
         });
 
-        mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+        mBotCluster.on_button_click([](const dpp::button_click_t& event){
             event.reply("You clicked: " + event.custom_id);
         });
 

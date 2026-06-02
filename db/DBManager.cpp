@@ -19,7 +19,7 @@ namespace wdb::db
 {
     DBManager::DBManager()
     {
-        Log::Trace("DBManager::DBManager()");
+        Log::Trace(__func__);
         m_DatabasePath = Common::GetDatabaseDir() + "/database.db";
         Log::Trace("Database file path: {}", m_DatabasePath.string());
         if (!std::filesystem::exists(m_DatabasePath)) {
@@ -36,11 +36,13 @@ namespace wdb::db
 
     SQLite::Database &DBManager::GetDatabase() const
     {
+        Log::Trace(__func__);
         return *m_Database;
     }
 
     void DBManager::CreateDatabase() const
     {
+        Log::Trace(__func__);
         Log::Info("Creating database...");
         std::filesystem::create_directories(m_DatabasePath.parent_path());
         Log::Debug("Database directory created...");
@@ -51,6 +53,7 @@ namespace wdb::db
 
     void DBManager::CreateTables() const
     {
+        Log::Trace(__func__);
         if (!m_Database->tableExists("Users"))
         {
             Log::Debug("Creating database 'Users' table...");
@@ -67,6 +70,7 @@ namespace wdb::db
 
     void DBManager::OpenDatabase()
     {
+        Log::Trace(__func__);
         Log::Trace("Opening database...");
         BackupDatabase();
         m_Database = std::make_unique<SQLite::Database>(m_DatabasePath, SQLite::OPEN_READWRITE, -1);
@@ -75,27 +79,44 @@ namespace wdb::db
 
     void DBManager::BackupDatabase() const
     {
+        Log::Trace(__func__);
         const std::filesystem::path backupPath = Common::GetDatabaseDir() + "/database.db.backup";
         std::filesystem::copy_file(m_DatabasePath, backupPath, std::filesystem::copy_options::overwrite_existing);
     }
 
     void DBManager::AddNewUser(std::string discordUsername, int64_t discordUserID) const
     {
-        Log::Trace("DBManager::AddNewUser()");
+        Log::Trace(__func__);
 
+        static SQLite::Statement query(*m_Database, sql_queries::ADD_NEW_DISCORD_USER);
+        query.bind(1, discordUsername);
+        query.bind(2, discordUserID);
 
-        std::string query = std::format(
-            R"(INSERT INTO Users (DiscordUsername, DiscordID) VALUES ('{}', '{}'))",
-            discordUsername, discordUserID);
-        Log::Trace("Query to be executed:\n{}", query);
-        SQLite::Statement(*m_Database, query).exec();
+        Log::Trace("Query to be executed:\n{}", query.getExpandedSQL());
+        query.exec();
         Log::Info("User {} added to database!", discordUsername);
     }
+
+    void DBManager::AddNewFraction(std::string name, std::string description, DiscordID discordRoleID) const
+    {
+        Log::Trace(__func__);
+
+        static SQLite::Statement query(*m_Database, sql_queries::ADD_NEW_FRACTION);
+        query.bind(1, name);
+        query.bind(2, description);
+        query.bind(3, discordRoleID);
+
+        Log::Trace("Query to be executed:\n{}", query.getExpandedSQL());
+        query.exec();
+        Log::Info("Fraction {} added to database successfully!", name);
+    }
+
+    // Under construction below
 
     json DBManager::GetAllUsers() const
     {
         Log::Trace(__func__);
-        SQLite::Statement query(*m_Database, sql_queries::GET_ALL_USERS);
+        static SQLite::Statement query(*m_Database, sql_queries::GET_ALL_USERS);
         Log::Trace("Query sent.");
 
         json results = json::array();
@@ -114,33 +135,22 @@ namespace wdb::db
         return results;
     }
 
-    std::string DBManager::GetFractionNameByID(int id) const
-    {
-        SQLite::Statement query(*m_Database, std::format("SELECT Name FROM Fractions WHERE ID={}", id));
-        std::string fractionName;
-        while (query.executeStep())
-        {
-            fractionName = std::string(query.getColumn(0));
-        }
-        return fractionName;
-    }
-
-    void DBManager::AddNewFraction(std::string name, std::string description, DiscordID discordRoleID) const
+    std::string DBManager::GetFractionNameByID(const int id) const
     {
         Log::Trace(__func__);
+        static SQLite::Statement query(*m_Database, "SELECT Name FROM Fractions WHERE ID = ?");
+        query.bind(1, id);
 
-        std::string query = std::format(
-            R"(INSERT INTO Fractions (Name, Description, DiscordRoleID) VALUES ('{}', '{}', '{}'))",
-            name, description, discordRoleID);
-        Log::Trace("Query to be executed:\n{}", query);
-        SQLite::Statement(*m_Database, query).exec();
-        Log::Info("Fraction {} added to database succesfully!", name);
+        while (query.executeStep()) {
+            return std::string(query.getColumn(0));
+        }
+        return "";
     }
 
     std::string DBManager::GetAllFractions() const
     {
         Log::Trace(__func__);
-        SQLite::Statement query(*m_Database, "SELECT * FROM Fractions");
+        static SQLite::Statement query(*m_Database, sql_queries::GET_ALL_FRACTIONS);
         Log::Trace("Query sent.");
 
         int fractionCount = 0;

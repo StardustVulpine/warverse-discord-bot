@@ -34,5 +34,9 @@ namespace wdb::db::sql_queries
     )";
 
     const std::string GET_ALL_USERS = "SELECT * FROM Users";
+    const std::string GET_ALL_FRACTIONS = "SELECT * FROM Fractions";
+
+    const std::string ADD_NEW_DISCORD_USER = "INSERT INTO Users (DiscordUsername, DiscordID) VALUES (?, ?)";
+    const std::string ADD_NEW_FRACTION = "INSERT INTO Fractions (Name, Description, DiscordRoleID) VALUES (?, ?, ?)";
 
 }

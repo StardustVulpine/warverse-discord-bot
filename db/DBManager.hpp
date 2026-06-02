@@ -29,9 +29,10 @@ namespace wdb::db
         void BackupDatabase() const;
 
         void AddNewUser(std::string discordUsername, DiscordID discordUserID) const;
+        void AddNewFraction(std::string name, std::string description, DiscordID discordRoleID) const;
+
         [[nodiscard]] json GetAllUsers() const;
         [[nodiscard]] std::string GetFractionNameByID(int id) const;
-        void AddNewFraction(std::string name, std::string description, DiscordID discordRoleID) const;
         [[nodiscard]] std::string GetAllFractions() const;
 
         private:
@@ -40,7 +41,7 @@ namespace wdb::db
 
         static std::string GetQueryFromSQLFile(const std::filesystem::path &queryPath)
         {
-            Log::Trace("DBManager::GetQueryFromSQLFile() with path: {}", queryPath.string());
+            Log::Trace("{} with path: {}", __func__, queryPath.string());
             std::fstream fs(queryPath);
             const uintmax_t filesize = std::filesystem::file_size(queryPath);
             auto buffer = std::make_unique<char[]>(filesize + 1);
@@ -51,4 +52,9 @@ namespace wdb::db
             return buffer.get();
         }
     };
+
+    namespace error_code
+    {
+        const int SQLITE_UNIQUE_CONSTRAINT = 19;
+    }
 } // wdb
