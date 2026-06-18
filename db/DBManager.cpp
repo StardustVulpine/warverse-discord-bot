@@ -84,11 +84,11 @@ namespace wdb::db
         std::filesystem::copy_file(m_DatabasePath, backupPath, std::filesystem::copy_options::overwrite_existing);
     }
 
-    void DBManager::AddNewUser(std::string discordUsername, int64_t discordUserID) const
+    void DBManager::AddNewUser(std::string discordUsername, const int64_t discordUserID) const
     {
         Log::Trace(__func__);
 
-        static SQLite::Statement query(*m_Database, sql_queries::ADD_NEW_DISCORD_USER);
+        SQLite::Statement query(*m_Database, sql_queries::ADD_NEW_DISCORD_USER);
         query.bind(1, discordUsername);
         query.bind(2, discordUserID);
 
@@ -97,11 +97,11 @@ namespace wdb::db
         Log::Info("User {} added to database!", discordUsername);
     }
 
-    void DBManager::AddNewFraction(std::string name, std::string description, DiscordID discordRoleID) const
+    void DBManager::AddNewFraction(std::string name, const std::string& description, const DiscordID discordRoleID) const
     {
         Log::Trace(__func__);
 
-        static SQLite::Statement query(*m_Database, sql_queries::ADD_NEW_FRACTION);
+        SQLite::Statement query(*m_Database, sql_queries::ADD_NEW_FRACTION);
         query.bind(1, name);
         query.bind(2, description);
         query.bind(3, discordRoleID);
@@ -113,10 +113,10 @@ namespace wdb::db
 
     // Under construction below
 
-    json DBManager::GetAllUsers() const
+    nlohmann::json DBManager::GetAllUsers() const
     {
         Log::Trace(__func__);
-        static SQLite::Statement query(*m_Database, sql_queries::GET_ALL_USERS);
+        SQLite::Statement query(*m_Database, sql_queries::GET_ALL_USERS);
         Log::Trace("Query sent.");
 
         json results = json::array();
@@ -130,55 +130,46 @@ namespace wdb::db
             user["Fraction"] = GetFractionNameByID(query.getColumn(3));
             results.push_back(user);
         }
-        Log::Trace("Json created!");
-        Log::Debug(results.dump(0));
+        Log::Trace("Users Json created!");
+        return results;
+    }
+
+    nlohmann::json DBManager::GetAllFractions() const
+    {
+        Log::Trace(__func__);
+        SQLite::Statement query(*m_Database, sql_queries::GET_ALL_FRACTIONS);
+        Log::Trace("Query sent.");
+
+        json results = json::array();
+
+        while (query.executeStep())
+        {
+            nlohmann::json fraction;
+
+            fraction["ID"] = query.getColumn(0);
+            fraction["Name"] = query.getColumn(1);
+            fraction["Description"] = query.getColumn(2);
+            fraction["DiscordRoleID"] = query.getColumn(3);
+            fraction["CurrentExp"] = query.getColumn(4);
+            fraction["ExpToNextLevel"] = query.getColumn(5);
+            fraction["Level"] = query.getColumn(6);
+            results.push_back(fraction);
+        }
+        Log::Trace("Fractions Json created!");
+        Log::Debug(results.dump(4));
         return results;
     }
 
     std::string DBManager::GetFractionNameByID(const int id) const
     {
         Log::Trace(__func__);
-        static SQLite::Statement query(*m_Database, "SELECT Name FROM Fractions WHERE ID = ?");
+        SQLite::Statement query(*m_Database, sql_queries::GET_FRACTION_BY_ID);
         query.bind(1, id);
 
         while (query.executeStep()) {
             return std::string(query.getColumn(0));
         }
         return "";
-    }
-
-    std::string DBManager::GetAllFractions() const
-    {
-        Log::Trace(__func__);
-        static SQLite::Statement query(*m_Database, sql_queries::GET_ALL_FRACTIONS);
-        Log::Trace("Query sent.");
-
-        int fractionCount = 0;
-        nlohmann::ordered_json fractionsAll;
-
-        while (query.executeStep())
-        {
-            fractionCount++;
-            Log::Trace("Getting user: {}", fractionCount);
-
-            nlohmann::ordered_json fraction;
-
-            fraction["ID"] = query.getColumn(0);
-            fraction["Name"] = query.getColumn(1);
-            fraction["Description"] = query.getColumn(2);
-            fraction["CurrentExp"] = query.getColumn(3);
-            fraction["ExpToNextLevel"] = query.getColumn(4);
-            fraction["Level"] = query.getColumn(4);
-
-            Log::Debug("Got all fraction's fields from database. Preparing json object...");
-
-            const std::string fractionKey = std::format("Fraction {}", fractionCount);
-
-            fractionsAll[fractionKey] = fraction;
-        }
-        Log::Trace("Json created!");
-        Log::Debug(fractionsAll.dump(4));
-        return fractionsAll.dump(4);
     }
 }
 

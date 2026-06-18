@@ -3,7 +3,7 @@
 //
 
 #include "Bot.hpp"
-
+#include <cpr/cpr.h>
 
 namespace wdb
 {
@@ -133,6 +133,30 @@ namespace wdb
                     return;
                 }
                 dpp::user user = event.command.get_resolved_user(std::get<dpp::snowflake>(event.get_parameter("user")));
+                dpp::guild_member member = event.command.get_resolved_member(std::get<dpp::snowflake>(event.get_parameter("user")));
+
+                std::string userID = std::to_string(user.id);
+                std::string userAvatarURL = member.get_avatar_url();
+                if (userAvatarURL.empty()) {
+                    userAvatarURL = user.get_avatar_url();
+                }
+
+                if (!std::filesystem::exists(Common::GetImagesDir())) {
+                    std::filesystem::create_directories(Common::GetImagesDir());
+                }
+
+                // To Do Later: Caching user's avatars along with DB path entry, and sending them as embed thumbnails instead of relaying on discord' URL's
+
+                /*std::string imgFilepath = std::format("{}/{}.png", Common::GetImagesDir(), userID);
+                std::ofstream file(imgFilepath, std::ios::binary);
+                cpr::Response r = cpr::Download(file, cpr::Url{userAvatarURL});
+                if (r.status_code == 200) {
+                    Log::Info("Downloaded image: {}", r.text);
+                } else {
+                    Log::Error("Download failed: {}", r.status_code);
+                }
+
+                Log::Debug("User Avatar URL: " + userAvatarURL);*/
 
                 try {
                     m_dbManager->AddNewUser(user.username, user.id);
@@ -141,9 +165,8 @@ namespace wdb
                     replyMsg.add_embed(dpp::embed()
                         .set_title(":white_check_mark: User added to database!")
                         .set_color(dpp::colors::green)
-                        .set_description(std::format("**User:** <@{}>\n**ID:** `{}`",
-                            std::to_string(user.id), std::to_string(user.id)))
-                        .set_thumbnail(user.get_avatar_url()));
+                        .set_description(std::format("**User:** <@{}>\n**ID:** `{}`", userID, userID))
+                        .set_thumbnail(userAvatarURL));
                     event.reply(replyMsg);
                 }
                 catch (SQLite::Exception &e) {
@@ -154,9 +177,8 @@ namespace wdb
                         replyMsg.add_embed(dpp::embed()
                             .set_title(":x: User already exists in database!")
                             .set_color(dpp::colors::red)
-                            .set_description(std::format("**User:** <@{}>\n**ID:** `{}`",
-                                std::to_string(user.id), std::to_string(user.id)))
-                            .set_thumbnail(user.get_avatar_url()));
+                            .set_description(std::format("**User:** <@{}>\n**ID:** `{}`", userID, userID))
+                            .set_thumbnail(userAvatarURL));
                         event.reply(replyMsg);
                     }
                 }
@@ -209,7 +231,7 @@ namespace wdb
         {},
         nullptr
         );
-        /*mCommandManager.AddSubCommand(
+        mCommandManager.AddSubCommand(
             "show",
             "users",
             "List all users in database",
@@ -217,13 +239,34 @@ namespace wdb
             [this](const dpp::slashcommand_t& event)
             {
                 dpp::message replyMsg;
-                json allUsers = m_dbManager->GetAllUsers();
-                const dpp::embed embed(&allUsers);
+                json allUsers;
+                try {
+                    allUsers = m_dbManager->GetAllUsers();
+                } catch (SQLite::Exception &e) {
+                    Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                }
+
+                dpp::embed embed = dpp::embed()
+                    .set_title("Registered users")
+                    .set_color(dpp::colors::sti_blue);
+
+                for (const auto& user : allUsers)
+                {
+                    std::string username = user.value("discordUsername", "none");
+                    std::string discord_id = user.value("discordID", "none");
+                    std::string fraction = user.value("fraction", "none");
+
+                    std::string fieldName = "👤 " + username;
+                    std::string fieldValue = "🪪 **ID:** " + discord_id + "    📝 **Fraction:** " + fraction;
+
+                    embed.add_field(fieldName, fieldValue);
+                }
+
                 replyMsg.add_embed(embed);
 
                 event.reply(replyMsg);
             }
-        );*/
+        );
         mCommandManager.AddSubCommand(
             "show",
             "fractions",
@@ -231,7 +274,37 @@ namespace wdb
             {},
             [this](const dpp::slashcommand_t& event)
             {
-                event.reply(dpp::message(m_dbManager->GetAllFractions()));
+                dpp::message replyMsg;
+                json allFractions;
+                try {
+                    allFractions = m_dbManager->GetAllFractions();
+                } catch (SQLite::Exception &e) {
+                    Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                }
+
+                dpp::embed embed = dpp::embed()
+                    .set_title("Fractions")
+                    .set_color(dpp::colors::sti_blue);
+
+                for (const auto& fraction : allFractions)
+                {
+                    std::string fractionName = fraction.value("Name", "none");
+                    std::string fractionDescription = fraction.value("Description", "none");
+                    std::string fractionRoleID = fraction.value("DiscordRoleID", "none");
+                    std::string fractionLevel = fraction.value("Level", "none");
+                    std::string fractionCurrentExp = fraction.value("CurrentExp", "none");
+                    std::string fractionExpToNextLevel = fraction.value("ExpToNextLevel", "none");
+
+                    std::string fieldName = "📝 " + fractionName;
+                    std::string fieldValue = fractionDescription + "\n**Role:** <@&" + fractionRoleID + ">\n**LEVEL:** " + fractionLevel +
+                        "(" + fractionCurrentExp + "/" + fractionExpToNextLevel + " exp)";
+
+                    embed.add_field(fieldName, fieldValue);
+                }
+
+                replyMsg.add_embed(embed);
+
+                event.reply(replyMsg);
             }
         );
 

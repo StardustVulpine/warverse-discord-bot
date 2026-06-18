@@ -24,4 +24,8 @@ namespace wdb::Common
     {
         return std::format("{}/db", GetAppDir());
     }
+    inline std::string GetImagesDir()
+    {
+        return std::format("{}/img", GetAppDir());
+    }
 }

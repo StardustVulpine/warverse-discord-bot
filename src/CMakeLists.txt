@@ -7,6 +7,8 @@ set(EXECUTABLES_LIST
 )
 add_executable(${PROJECT_NAME} ${EXECUTABLES_LIST})
 
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-invalid-constexpr)
+
 set(LIB_DEPENDENCY_LIST
         wdb_database
 )
@@ -17,6 +19,7 @@ set(LIB_LINK_TARGETS
         ${SQLite3_LIBRARIES}
         SQLiteCpp
         ${LIB_DEPENDENCY_LIST}
+        cpr::cpr
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LIB_LINK_TARGETS})
 
@@ -26,4 +29,4 @@ set(INCLUDE_DIR
     ${CMAKE_SOURCE_DIR}/utils
     ${CMAKE_SOURCE_DIR}/db
 )
-target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR} ${SQLite3_INCLUDE_DIRS} )
+target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR} ${SQLite3_INCLUDE_DIRS})

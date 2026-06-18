@@ -29,11 +29,11 @@ namespace wdb::db
         void BackupDatabase() const;
 
         void AddNewUser(std::string discordUsername, DiscordID discordUserID) const;
-        void AddNewFraction(std::string name, std::string description, DiscordID discordRoleID) const;
+        void AddNewFraction(std::string name, const std::string& description, DiscordID discordRoleID) const;
 
-        [[nodiscard]] json GetAllUsers() const;
+        [[nodiscard]] nlohmann::json GetAllUsers() const;
+        [[nodiscard]] nlohmann::json GetAllFractions() const;
         [[nodiscard]] std::string GetFractionNameByID(int id) const;
-        [[nodiscard]] std::string GetAllFractions() const;
 
         private:
         std::filesystem::path m_DatabasePath;
@@ -55,6 +55,6 @@ namespace wdb::db
 
     namespace error_code
     {
-        const int SQLITE_UNIQUE_CONSTRAINT = 19;
+        constexpr int SQLITE_UNIQUE_CONSTRAINT = 19;
     }
 } // wdb
