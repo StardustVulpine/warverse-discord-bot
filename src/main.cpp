@@ -7,8 +7,6 @@
 
 int main ()
 {
-    stardustvulpine::Utils::Console::Log::ToFile(wdb::Common::GetLogsDir());
-
     wdb::Bot bot;
     bot.Run();
 

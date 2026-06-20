@@ -7,9 +7,8 @@
 
 namespace wdb
 {
-    void Bot::Commands()
+    void Bot::OnCommandSentEvent()
     {
-        Log::Trace("{} {}", __func__, " updating bot commands...");
 
         mCommandManager.NewCommand(
         "help",
@@ -61,58 +60,7 @@ namespace wdb
             event.reply(std::format("Pong <@{}>!", std::to_string(userID)));
         });
 
-        mCommandManager.NewCommand(
-        "dm",
-        "Sends a direct message to a user",
-        0,
-        {
-            dpp::command_option(dpp::co_mentionable, "user", "The user to message", false),
-            dpp::command_option(dpp::co_string, "message", "The message to send", false)},
-        [this](const dpp::slashcommand_t& event)
-        {
-            std::string issuingUsername = event.command.get_issuing_user().username;
-                Log::Print("{} used command: {}", issuingUsername, event.command.get_command_name());
-
-                dpp::snowflake user;
-                std::string message;
-
-                /* If there was no specified user, we set the "user" variable to the command author (issuing user). */
-                if (event.get_parameter("user").index() == 0) {
-                    user = event.command.get_issuing_user().id;
-                } else { /* Otherwise, we set it to the specified user! */
-                    user = std::get<dpp::snowflake>(event.get_parameter("user"));
-                }
-
-                /* If there was no specified message, we set a default one. index() == 0 means the parameter is empty (std::monostate) */
-                if (event.get_parameter("message").index() == 0) {
-                    message = "Here's a private message!";
-                } else { /* Otherwise, we set it to the specified message! */
-                    message = std::get<std::string>(event.get_parameter("message"));
-                }
-
-                /* Send a message to the user set above. */
-                mBotCluster.direct_message_create(user, dpp::message(message), [event, user, issuingUsername](const dpp::confirmation_callback_t& callback){
-                    /* If the callback errors, we want to send a message telling the author that something went wrong. */
-                    if (callback.is_error()) {
-                        /* Here, we want the error message to be different if the user we're trying to send a message to is the command author. */
-                        if (user == event.command.get_issuing_user().id) {
-                            event.reply(dpp::message("I couldn't send you a message.").set_flags(dpp::m_ephemeral));
-                        } else {
-                            event.reply(dpp::message("I couldn't send a message to that user. Please check that is a valid user!").set_flags(dpp::m_ephemeral));
-                        }
-                        Log::Print("{} used command: {}. Message could not be delivered.", issuingUsername, event.command.get_command_name());
-                        return;
-                    }
-
-                    /* We do the same here, so the message is different if it's to the command author or if it's to a specified user. */
-                    if (user == event.command.get_issuing_user().id) {
-                        event.reply(dpp::message("I've sent you a private message.")/*.set_flags(dpp::m_ephemeral)*/);
-                        Log::Print("{} used command: {}. Message was sent.", issuingUsername, event.command.get_command_name());
-                    } else {
-                        event.reply(dpp::message("I've sent a message to that user.")/*.set_flags(dpp::m_ephemeral)*/);
-                    }
-                });
-        });
+//region DB MANAGEMENT COMMANDS
 
         mCommandManager.NewCommand(
         "add",
@@ -192,7 +140,7 @@ namespace wdb
                 dpp::command_option(dpp::co_string, "name", "The name of the fraction", true),
                 dpp::command_option(dpp::co_string, "description", "The description of the fraction", true),
                 dpp::command_option(dpp::co_role, "fraction_role", "The role of the fraction", true)
-            },
+                },
             [this](const dpp::slashcommand_t& event)
             {
                 if (event.get_parameter("name").index() == 0 ||
@@ -225,8 +173,286 @@ namespace wdb
         );
 
         mCommandManager.NewCommand(
+            "remove",
+            "Removes users/fractions from database.\nRequired permissions: Manage Guild",
+            dpp::p_manage_guild,
+            {},
+            nullptr
+        );
+        mCommandManager.AddSubCommand(
+            "remove",
+            "user",
+            "Remove user from database",
+            {dpp::command_option(dpp::co_mentionable, "user", "The user to be removed", true)},
+            [this](const dpp::slashcommand_t& event)
+            {
+                if (event.get_parameter("user").index() == 0) {
+                    event.reply(dpp::message("Couldn't add user. No user provided.").set_flags(dpp::m_ephemeral));
+                    return;
+                }
+                dpp::user user = event.command.get_resolved_user(std::get<dpp::snowflake>(event.get_parameter("user")));
+                const dpp::guild_member member = event.command.get_resolved_member(std::get<dpp::snowflake>(event.get_parameter("user")));
+
+                std::string userID = std::to_string(user.id);
+                std::string userAvatarURL = member.get_avatar_url();
+                if (userAvatarURL.empty()) {
+                    userAvatarURL = user.get_avatar_url();
+                }
+
+                const dpp::embed embed = dpp::embed()
+                    .set_title(":wastebasket: Are you sure to delete this user from database?")
+                    .set_color(dpp::colors::red_blood)
+                    .set_description(std::format("**User:** <@{}>\n**ID:** `{}`", userID, userID))
+                    .set_thumbnail(userAvatarURL);
+
+                const std::string yesButtonID = "REMOVE_USER_CONFIRM_BUTTON-YES:" + userID;
+                const std::string noButtonID = "REMOVE_USER_CONFIRM_BUTTON-NO";
+                const dpp::component yesButton = dpp::component()
+                    .set_label("Yes")
+                    .set_type(dpp::cot_button)
+                    .set_style(dpp::cos_danger)
+                    .set_id(yesButtonID);
+                const dpp::component noButton = dpp::component()
+                    .set_label("No")
+                    .set_type(dpp::cot_button)
+                    .set_style(dpp::cos_primary)
+                    .set_id(noButtonID);
+                auto buttons = dpp::component();
+                buttons.add_component(yesButton);
+                buttons.add_component(noButton);
+
+                dpp::message replyMsg;
+                replyMsg.add_embed(embed);
+                replyMsg.add_component(buttons);
+                event.reply(replyMsg);
+            });
+            mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+                if (event.custom_id.find("REMOVE_USER_CONFIRM_BUTTON-YES:") == 0)
+                {
+                    const std::string targetID_str = event.custom_id.substr(31);
+                    const DiscordID targetID = std::stoull(targetID_str);
+
+                    // Grab the message that the button was attached to and disable all components on the first action row
+                    dpp::message updated_msg = event.command.msg;
+                    if (!updated_msg.components.empty()) {
+                        for (auto& component : updated_msg.components[0].components) {
+                            component.set_disabled(true);
+                        }
+                    }
+                    event.reply(dpp::ir_update_message, updated_msg);
+
+                    try {
+                        m_dbManager->RemoveUser(targetID);
+                        event.reply(dpp::message(":wastebasket: User removed from database!"));
+                    }
+                    catch (SQLite::Exception &e) {
+                        Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                        if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
+                        {
+                            event.reply(dpp::message(":x: User not found in database!"));
+                        }
+                    }
+                }
+                if (event.custom_id == "REMOVE_USER_CONFIRM_BUTTON-NO") {
+                    event.reply(":x: Operation cancelled.");
+                }
+            });
+        mCommandManager.AddSubCommand(
+            "remove",
+            "fraction",
+            "Remove fraction from database",
+            {dpp::command_option(dpp::co_role, "fraction_role", "Role associated with fraction you want to remove", true)},
+            [this](const dpp::slashcommand_t& event)
+            {
+                if (event.get_parameter("fraction_role").index() == 0) {
+                    event.reply(dpp::message("Couldn't remove fraction without specifying one.").set_flags(dpp::m_ephemeral));
+                    return;
+                }
+                const DiscordID fractionID = event.command.get_resolved_role(std::get<dpp::snowflake>(event.get_parameter("fraction_role"))).id;
+
+                try {
+                    std::string fractionName = m_dbManager->GetFractionNameByID(fractionID);
+
+                    const dpp::embed embed = dpp::embed()
+                        .set_title(":wastebasket: Are you sure to delete this fraction from database?")
+                        .set_color(dpp::colors::red_blood)
+                        .set_description(std::format("**Name:** {}\n**Role:** <@{}>", fractionName, std::to_string(fractionID)));
+
+                    const std::string yesButtonID = "REMOVE_FRACTION_CONFIRM_BUTTON-YES:" + std::to_string(fractionID);
+                    const std::string noButtonID = "REMOVE_FRACTION_CONFIRM_BUTTON-NO";
+
+                    const dpp::component yesButton = dpp::component()
+                        .set_label("Yes")
+                        .set_type(dpp::cot_button)
+                        .set_style(dpp::cos_danger)
+                        .set_id(yesButtonID);
+                    const dpp::component noButton = dpp::component()
+                        .set_label("No")
+                        .set_type(dpp::cot_button)
+                        .set_style(dpp::cos_primary)
+                        .set_id(noButtonID);
+                    auto buttons = dpp::component();
+                    buttons.add_component(yesButton);
+                    buttons.add_component(noButton);
+
+                    dpp::message replyMsg;
+                    replyMsg.add_embed(embed);
+                    replyMsg.add_component(buttons);
+                    event.reply(replyMsg);
+                }
+                catch (SQLite::Exception &e) {
+                    Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                    if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
+                    {
+                        const std::string reply = std::format(R"(Couldn't find fraction with assigned role <@&{}> in database.)",
+                            std::to_string(fractionID));
+                        event.reply(dpp::message(reply));
+                    }
+                }
+            });
+            mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+                if (event.custom_id.find("REMOVE_FRACTION_CONFIRM_BUTTON-YES:") == 0)
+                {
+                    const std::string targetID_str = event.custom_id.substr(35);
+                    const DiscordID targetID = std::stoull(targetID_str);
+
+                    try {
+                        std::string fractionName = m_dbManager->GetFractionNameByID(targetID);
+                        m_dbManager->RemoveFraction(targetID);
+                        const std::string reply = std::format(R"(Fraction '{}' with assigned role <@&{}> has been removed from database.)",
+                            fractionName,  std::to_string(targetID));
+                        event.reply(dpp::message(reply));
+                    }
+                    catch (SQLite::Exception &e) {
+                        Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                        if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
+                        {
+                            const std::string reply = std::format(R"(Couldn't find fraction with assigned role <@&{}> in database.)",
+                                std::to_string(targetID));
+                            event.reply(dpp::message(reply));
+                        }
+                    }
+                }
+                if (event.custom_id == "REMOVE_FRACTION_CONFIRM_BUTTON-NO") {
+                    event.reply(":x: Operation cancelled.");
+                }
+            });
+        mCommandManager.AddSubCommand(
+            "remove",
+            "all_users",
+            "Remove ALL USERS from database (USE WITH CAUTION!)",
+            {},
+            [this](const dpp::slashcommand_t& event)
+            {
+                const dpp::embed embed = dpp::embed()
+                        .set_title(":wastebasket: Are you sure to delete ALL USERS from database?")
+                        .set_color(dpp::colors::red_blood)
+                        .set_description(":warning: ***THIS ACTION CANNOT BE UNDONE*** :warning:");
+
+                const std::string yesButtonID = "REMOVE_ALL_USERS_CONFIRM_BUTTON-YES";
+                const std::string noButtonID = "REMOVE_ALL_USERS_CONFIRM_BUTTON-NO";
+                const dpp::component yesButton = dpp::component()
+                    .set_label("Yes")
+                    .set_type(dpp::cot_button)
+                    .set_style(dpp::cos_danger)
+                    .set_id(yesButtonID);
+                const dpp::component noButton = dpp::component()
+                    .set_label("No")
+                    .set_type(dpp::cot_button)
+                    .set_style(dpp::cos_primary)
+                    .set_id(noButtonID);
+                auto buttons = dpp::component();
+                buttons.add_component(yesButton);
+                buttons.add_component(noButton);
+
+                dpp::message replyMsg;
+                replyMsg.add_embed(embed);
+                replyMsg.add_component(buttons);
+                event.reply(replyMsg);
+            });
+            mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+                if (event.custom_id == "REMOVE_ALL_USERS_CONFIRM_BUTTON-YES")
+                {
+                    try {
+                        m_dbManager->RemoveAllUsers();
+                        const std::string reply = ":wastebasket: ALL USERS have been REMOVED from database.";
+                        event.reply(dpp::message(reply));
+                    }
+                    catch (SQLite::Exception &e) {
+                        Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                        if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
+                        {
+                            const std::string reply = "Operation wasn't possible due to SQLite Database error";
+                            event.reply(dpp::message(reply));
+                        }
+                    }
+                }
+                if (event.custom_id == "REMOVE_ALL_USERS_CONFIRM_BUTTON-NO") {
+                    event.reply(":x: Operation cancelled.");
+                }
+            });
+        mCommandManager.AddSubCommand(
+            "remove",
+            "all_fractions",
+            "Remove ALL FRACTIONS from database (USE WITH CAUTION!)",
+            {},
+            [this](const dpp::slashcommand_t& event)
+            {
+                const dpp::embed embed = dpp::embed()
+                    .set_title(":wastebasket: Are you sure to delete ALL FRACTIONS from database?")
+                    .set_color(dpp::colors::red_blood)
+                    .set_description(":warning: ***THIS ACTION CANNOT BE UNDONE*** :warning:");
+
+                const std::string yesButtonID = "REMOVE_ALL_FRACTIONS_CONFIRM_BUTTON-YES";
+                const std::string noButtonID = "REMOVE_ALL_FRACTIONS_CONFIRM_BUTTON-NO";
+
+                const dpp::component yesButton = dpp::component()
+                    .set_label("Yes")
+                    .set_type(dpp::cot_button)
+                    .set_style(dpp::cos_danger)
+                    .set_id(yesButtonID);
+                const dpp::component noButton = dpp::component()
+                    .set_label("No")
+                    .set_type(dpp::cot_button)
+                    .set_style(dpp::cos_primary)
+                    .set_id(noButtonID);
+                auto buttons = dpp::component();
+                buttons.add_component(yesButton);
+                buttons.add_component(noButton);
+
+                dpp::message replyMsg;
+                replyMsg.add_embed(embed);
+                replyMsg.add_component(buttons);
+                event.reply(replyMsg);
+            });
+            mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+                if (event.custom_id == "REMOVE_ALL_FRACTIONS_CONFIRM_BUTTON-YES")
+                {
+                    try {
+                        m_dbManager->RemoveAllFractions();
+                        const std::string reply = ":wastebasket: ALL FRACTIONS have been REMOVED from database.";
+                        event.reply(dpp::message(reply));
+                    }
+                    catch (SQLite::Exception &e) {
+                        Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                        if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
+                        {
+                            const std::string reply = "Operation wasn't possible due to SQLite Database error";
+                            event.reply(dpp::message(reply));
+                        }
+                    }
+                }
+                if (event.custom_id == "REMOVE_ALL_FRACTIONS_CONFIRM_BUTTON-NO") {
+                    event.reply(":x: Operation cancelled.");
+                }
+            });
+
+//endregion
+
+//region PRINTING INFO FROM DB
+        mCommandManager.NewCommand(
         "show",
-        "Shows users/fractions in DB",
+        "Shows users/fractions in database",
         0,
         {},
         nullptr
@@ -297,7 +523,7 @@ namespace wdb
 
                     std::string fieldName = "📝 " + fractionName;
                     std::string fieldValue = fractionDescription + "\n**Role:** <@&" + fractionRoleID + ">\n**LEVEL:** " + fractionLevel +
-                        "(" + fractionCurrentExp + "/" + fractionExpToNextLevel + " exp)";
+                        " (" + fractionCurrentExp + "/" + fractionExpToNextLevel + " exp)";
 
                     embed.add_field(fieldName, fieldValue);
                 }
@@ -307,6 +533,63 @@ namespace wdb
                 event.reply(replyMsg);
             }
         );
+
+//endregion
+
+//region TEST FIELD
+
+        mCommandManager.NewCommand(
+        "dm",
+        "Sends a direct message to a user",
+        0,
+        {
+            dpp::command_option(dpp::co_mentionable, "user", "The user to message", false),
+            dpp::command_option(dpp::co_string, "message", "The message to send", false)},
+        [this](const dpp::slashcommand_t& event)
+        {
+            std::string issuingUsername = event.command.get_issuing_user().username;
+                Log::Print("{} used command: {}", issuingUsername, event.command.get_command_name());
+
+                dpp::snowflake user;
+                std::string message;
+
+                /* If there was no specified user, we set the "user" variable to the command author (issuing user). */
+                if (event.get_parameter("user").index() == 0) {
+                    user = event.command.get_issuing_user().id;
+                } else { /* Otherwise, we set it to the specified user! */
+                    user = std::get<dpp::snowflake>(event.get_parameter("user"));
+                }
+
+                /* If there was no specified message, we set a default one. index() == 0 means the parameter is empty (std::monostate) */
+                if (event.get_parameter("message").index() == 0) {
+                    message = "Here's a private message!";
+                } else { /* Otherwise, we set it to the specified message! */
+                    message = std::get<std::string>(event.get_parameter("message"));
+                }
+
+                /* Send a message to the user set above. */
+                mBotCluster.direct_message_create(user, dpp::message(message), [event, user, issuingUsername](const dpp::confirmation_callback_t& callback){
+                    /* If the callback errors, we want to send a message telling the author that something went wrong. */
+                    if (callback.is_error()) {
+                        /* Here, we want the error message to be different if the user we're trying to send a message to is the command author. */
+                        if (user == event.command.get_issuing_user().id) {
+                            event.reply(dpp::message("I couldn't send you a message.").set_flags(dpp::m_ephemeral));
+                        } else {
+                            event.reply(dpp::message("I couldn't send a message to that user. Please check that is a valid user!").set_flags(dpp::m_ephemeral));
+                        }
+                        Log::Print("{} used command: {}. Message could not be delivered.", issuingUsername, event.command.get_command_name());
+                        return;
+                    }
+
+                    /* We do the same here, so the message is different if it's to the command author or if it's to a specified user. */
+                    if (user == event.command.get_issuing_user().id) {
+                        event.reply(dpp::message("I've sent you a private message.")/*.set_flags(dpp::m_ephemeral)*/);
+                        Log::Print("{} used command: {}. Message was sent.", issuingUsername, event.command.get_command_name());
+                    } else {
+                        event.reply(dpp::message("I've sent a message to that user.")/*.set_flags(dpp::m_ephemeral)*/);
+                    }
+                });
+        });
 
         mCommandManager.NewCommand(
         "button",
@@ -328,14 +611,10 @@ namespace wdb
             );
             event.reply(msg);
         });
-
-        mBotCluster.on_button_click([](const dpp::button_click_t& event){
-            event.reply("You clicked: " + event.custom_id);
-        });
-
+//endregion
     }
 
-    void Bot::MessageListeners()
+    void Bot::OnMessageSentEventListen()
     {
         // Listen for leveling bot messages and catch mentioned user.
         mBotCluster.on_message_create([](const dpp::message_create_t& event)
@@ -360,9 +639,13 @@ namespace wdb
 
     void Bot::Run()
     {
-        Commands();
-        MessageListeners();
-        Log::Info("Bot started!");
+        Log::Trace("Updating bot commands...");
+        OnCommandSentEvent();
+        Log::Info("Commands Registered!");
+        Log::Trace("Updating message listeners...");
+        OnMessageSentEventListen();
+        Log::Info("Listeners Updated!");
+        Log::Info("Starting bot cluster...");
         mBotCluster.start(dpp::st_wait);
     }
 }

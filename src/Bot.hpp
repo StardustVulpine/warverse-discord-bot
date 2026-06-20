@@ -17,13 +17,14 @@ namespace wdb
     class Bot
     {
         public:
+        static constexpr std::string VERSION = "0.0.1";
+
         dpp::cluster mBotCluster;
 
-        Bot() : mBotCluster(GetToken(), dpp::i_default_intents)
+        Bot() : mBotCluster(Initialize(), dpp::i_default_intents)
         {
-
+            SetBotLogger();
             m_dbManager = std::make_unique<db::DBManager>();
-            SetLogger();
 
             mBotCluster.on_ready([this](const dpp::ready_t&){
                 mCommandManager.RegisterCommands(mBotCluster);
@@ -32,7 +33,6 @@ namespace wdb
             mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event) {
                 mCommandManager.HandleIncomingCommand(event);
             });
-
         }
 
         ~Bot() = default;
@@ -43,17 +43,80 @@ namespace wdb
         Bot& operator=(const Bot&) = delete;
         Bot& operator=(Bot&&) = delete;
 
-
         void Run();
 
-        std::unique_ptr<db::DBManager> *GetDBManager()
-        {
+        std::unique_ptr<db::DBManager> *GetDBManager() {
             return &m_dbManager;
         }
 
         private:
         std::unique_ptr<db::DBManager> m_dbManager;
         commands::CommandManager mCommandManager;
+
+        // Called as first method at start of the bot
+        static std::string Initialize()
+        {
+            std::cout << "----------------------------------------" << std::endl;
+            std::cout << "  Warverse Discord Bot - Version: " + VERSION << std::endl;
+            std::cout << "----------------------------------------" << std::endl;
+
+            Log::ToFile(Common::GetLogsDir());
+
+            CreateDirectories();
+
+            return GetToken();
+        }
+
+        void SetBotLogger()
+        {
+            Log::Trace("{} setting up bot logger...", __func__);
+
+            mBotCluster.on_log([](const dpp::log_t& log)
+            {
+                switch (log.severity)
+                {
+                    case dpp::ll_info:
+                        Log::Info(log.message);
+                        break;
+                    case dpp::ll_debug:
+                        Log::Debug(log.message);
+                        break;
+                    case dpp::ll_trace:
+                        Log::Trace(log.message);
+                        break;
+                    case dpp::ll_warning:
+                        Log::Warning(log.message);
+                        break;
+                    case dpp::ll_error:
+                        Log::Error(log.message);
+                        break;
+                    case dpp::ll_critical:
+                        Log::Critical(log.message);
+                        break;
+                    default:
+                        Log::Print(log.message);
+                        break;
+                }
+            });
+            Log::Trace("Logger set!");
+        }
+
+        static void CreateDirectories()
+        {
+            Log::Trace(__func__);
+            if (!std::filesystem::exists(Common::GetAppDir())) {
+                std::filesystem::create_directories(Common::GetAppDir());
+            }
+            if (!std::filesystem::exists(Common::GetLogsDir())) {
+                std::filesystem::create_directories(Common::GetLogsDir());
+            }
+            if (!std::filesystem::exists(Common::GetDatabaseDir())) {
+                std::filesystem::create_directories(Common::GetDatabaseDir());
+            }
+            if (!std::filesystem::exists(Common::GetImagesDir())) {
+                std::filesystem::create_directories(Common::GetImagesDir());
+            }
+        }
 
         static std::string GetToken()
         {
@@ -86,40 +149,7 @@ namespace wdb
             return  token_data["token"];
         }
 
-        void SetLogger()
-        {
-            Log::Trace("Bot::SetLogger() setting up bot logger...");
-
-            mBotCluster.on_log([](const dpp::log_t& log)
-            {
-                switch (log.severity)
-                {
-                    case dpp::ll_info:
-                        Log::Info(log.message);
-                        break;
-                    case dpp::ll_debug:
-                        Log::Debug(log.message);
-                        break;
-                    case dpp::ll_trace:
-                        Log::Trace(log.message);
-                        break;
-                    case dpp::ll_warning:
-                        Log::Warning(log.message);
-                        break;
-                    case dpp::ll_error:
-                        Log::Error(log.message);
-                        break;
-                    case dpp::ll_critical:
-                        Log::Critical(log.message);
-                        break;
-                    default:
-                        Log::Print(log.message);
-                        break;
-                }
-            });
-            Log::Trace("Logger set!");
-        }
-        void Commands();
-        void MessageListeners();
+        void OnCommandSentEvent();
+        void OnMessageSentEventListen();
     };
 }

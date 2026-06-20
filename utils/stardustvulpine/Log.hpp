@@ -33,7 +33,9 @@ namespace stardustvulpine::Utils::Console
          */
         static void ToFile(const std::string& logDir)
         {
-            std::filesystem::create_directories(logDir);
+            if (!std::filesystem::exists(logDir)) {
+                std::filesystem::create_directories(logDir);
+            }
             logFilePath = std::format("{}/{}.log", logDir, Time());
             try
             {

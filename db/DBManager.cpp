@@ -8,25 +8,30 @@
 #include <fstream>
 #include <filesystem>
 
-#include <stardustvulpine/Utils.hpp>
 #include <Common.hpp>
 #include <dpp/user.h>
 #include <dpp/nlohmann/json_fwd.hpp>
-#include <dpp/nlohmann/json_fwd.hpp>
-#include <nlohmann/json.hpp>
 
 namespace wdb::db
 {
     DBManager::DBManager()
     {
         Log::Trace(__func__);
+
+        if (!std::filesystem::exists(Common::GetDatabaseDir())) {
+            std::filesystem::create_directories(Common::GetDatabaseDir());
+        }
+
         m_DatabasePath = Common::GetDatabaseDir() + "/database.db";
         Log::Trace("Database file path: {}", m_DatabasePath.string());
+
         if (!std::filesystem::exists(m_DatabasePath)) {
             Log::Warning("Database file not found!");
             CreateDatabase();
         }
+
         OpenDatabase();
+
         if (!m_Database->tableExists("Users") || !m_Database->tableExists("Fractions"))
         {
             Log::Warning("Database tables not found!");
@@ -44,8 +49,6 @@ namespace wdb::db
     {
         Log::Trace(__func__);
         Log::Info("Creating database...");
-        std::filesystem::create_directories(m_DatabasePath.parent_path());
-        Log::Debug("Database directory created...");
         std::ofstream of(m_DatabasePath);
         of.close();
         Log::Info("Database created!");
@@ -111,7 +114,43 @@ namespace wdb::db
         Log::Info("Fraction {} added to database successfully!", name);
     }
 
-    // Under construction below
+    void DBManager::RemoveUser(const DiscordID discordUserID) const
+    {
+        Log::Trace(__func__);
+        SQLite::Statement query(*m_Database, sql_queries::DELETE_USER_BY_ID);
+        query.bind(1, discordUserID);
+        Log::Trace("Query to be executed:\n{}", query.getExpandedSQL());
+        query.exec();
+        Log::Info("User {} has been removed from database!", GetUserNameByID(discordUserID));
+    }
+
+    void DBManager::RemoveFraction(DiscordID discordRoleID) const
+    {
+        Log::Trace(__func__);
+        SQLite::Statement query(*m_Database, sql_queries::DELETE_FRACTION_BY_ID);
+        query.bind(1, discordRoleID);
+        Log::Trace("Query to be executed:\n{}", query.getExpandedSQL());
+        query.exec();
+        Log::Info("Fraction {} has been removed from database!", GetFractionNameByID(discordRoleID));
+    }
+
+    void DBManager::RemoveAllUsers() const
+    {
+        Log::Trace(__func__);
+        SQLite::Statement query(*m_Database, sql_queries::DELETE_USERS);
+        Log::Trace("Query to be executed:\n{}", query.getExpandedSQL());
+        query.exec();
+        Log::Info("All Fractions have been removed from database!");
+    }
+
+    void DBManager::RemoveAllFractions() const
+    {
+        Log::Trace(__func__);
+        SQLite::Statement query(*m_Database, sql_queries::DELETE_FRACTIONS);
+        Log::Trace("Query to be executed:\n{}", query.getExpandedSQL());
+        query.exec();
+        Log::Info("All Users have been removed from database!");
+    }
 
     nlohmann::json DBManager::GetAllUsers() const
     {
@@ -124,14 +163,26 @@ namespace wdb::db
         while (query.executeStep())
         {
             nlohmann::json user;
-            user["ID"] = query.getColumn(0);
+            user["discordID"] = query.getColumn(0);
             user["discordUsername"] = query.getColumn(1);
-            user["discordID"] = query.getColumn(2);
-            user["Fraction"] = GetFractionNameByID(query.getColumn(3));
+            user["Fraction"] = GetFractionNameByID(query.getColumn(2));
             results.push_back(user);
         }
         Log::Trace("Users Json created!");
+        Log::Trace(results.dump(4));
         return results;
+    }
+
+    std::string DBManager::GetUserNameByID(const int id) const
+    {
+        Log::Trace(__func__);
+        SQLite::Statement query(*m_Database, sql_queries::GET_USER_BY_ID);
+        query.bind(1, id);
+
+        while (query.executeStep()) {
+            return std::string(query.getColumn(0));
+        }
+        return "";
     }
 
     nlohmann::json DBManager::GetAllFractions() const
@@ -146,13 +197,13 @@ namespace wdb::db
         {
             nlohmann::json fraction;
 
-            fraction["ID"] = query.getColumn(0);
+            fraction["DiscordRoleID"] = query.getColumn(0);
             fraction["Name"] = query.getColumn(1);
             fraction["Description"] = query.getColumn(2);
-            fraction["DiscordRoleID"] = query.getColumn(3);
+            fraction["Level"] = query.getColumn(3);
             fraction["CurrentExp"] = query.getColumn(4);
             fraction["ExpToNextLevel"] = query.getColumn(5);
-            fraction["Level"] = query.getColumn(6);
+
             results.push_back(fraction);
         }
         Log::Trace("Fractions Json created!");

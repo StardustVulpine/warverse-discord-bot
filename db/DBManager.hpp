@@ -23,15 +23,16 @@ namespace wdb::db
 
         [[nodiscard]] SQLite::Database &GetDatabase() const;
 
-        void CreateDatabase() const;
-        void CreateTables() const;
-        void OpenDatabase();
-        void BackupDatabase() const;
-
         void AddNewUser(std::string discordUsername, DiscordID discordUserID) const;
         void AddNewFraction(std::string name, const std::string& description, DiscordID discordRoleID) const;
 
+        void RemoveUser(DiscordID discordUserID) const;
+        void RemoveFraction(DiscordID discordRoleID) const;
+        void RemoveAllUsers() const;
+        void RemoveAllFractions() const;
+
         [[nodiscard]] nlohmann::json GetAllUsers() const;
+        [[nodiscard]] std::string GetUserNameByID(int id) const;
         [[nodiscard]] nlohmann::json GetAllFractions() const;
         [[nodiscard]] std::string GetFractionNameByID(int id) const;
 
@@ -39,18 +40,10 @@ namespace wdb::db
         std::filesystem::path m_DatabasePath;
         std::unique_ptr<SQLite::Database> m_Database{};
 
-        static std::string GetQueryFromSQLFile(const std::filesystem::path &queryPath)
-        {
-            Log::Trace("{} with path: {}", __func__, queryPath.string());
-            std::fstream fs(queryPath);
-            const uintmax_t filesize = std::filesystem::file_size(queryPath);
-            auto buffer = std::make_unique<char[]>(filesize + 1);
-            fs.read(buffer.get(), static_cast<std::streamsize>(filesize));
-            buffer[filesize] = '\0';
-            Log::Trace("Query to be executed:\n{}", buffer.get());
-
-            return buffer.get();
-        }
+        void CreateDatabase() const;
+        void CreateTables() const;
+        void OpenDatabase();
+        void BackupDatabase() const;
     };
 
     namespace error_code
