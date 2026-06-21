@@ -28,6 +28,10 @@ namespace wdb
 
             mBotCluster.on_ready([this](const dpp::ready_t&){
                 mCommandManager.RegisterCommands(mBotCluster);
+
+                const dpp::presence botPresence(dpp::ps_online, dpp::at_custom, "Use /help to see availavle commands");
+
+                mBotCluster.set_presence(botPresence);
             });
 
             mBotCluster.on_slashcommand([this](const dpp::slashcommand_t& event) {

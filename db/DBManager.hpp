@@ -32,11 +32,14 @@ namespace wdb::db
         void RemoveAllFractions() const;
 
         [[nodiscard]] nlohmann::json GetAllUsers() const;
-        [[nodiscard]] std::string GetUserNameByID(int id) const;
-        [[nodiscard]] nlohmann::json GetAllFractions() const;
-        [[nodiscard]] std::string GetFractionNameByID(int id) const;
+        [[nodiscard]] std::string GetUserNameByID(DiscordID id) const;
+        bool UserExists(DiscordID id) const;
 
-        private:
+        [[nodiscard]] nlohmann::json GetAllFractions() const;
+        [[nodiscard]] std::string GetFractionNameByID(DiscordID id) const;
+        bool FractionExists(DiscordID id) const;
+
+    private:
         std::filesystem::path m_DatabasePath;
         std::unique_ptr<SQLite::Database> m_Database{};
 

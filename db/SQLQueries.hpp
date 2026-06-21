@@ -33,7 +33,7 @@ namespace wdb::db::sql_queries
     )";
 
     const std::string GET_ALL_USERS = "SELECT * FROM Users";
-    const std::string GET_USER_BY_ID = "SELECT DiscordUsername FROM Users WHERE DiscordID = ?";
+    const std::string GET_USERNAME_BY_ID = "SELECT DiscordUsername FROM Users WHERE DiscordID = ?";
     const std::string GET_ALL_FRACTIONS = "SELECT * FROM Fractions";
     const std::string GET_FRACTION_BY_ID = "SELECT Name FROM Fractions WHERE FractionRoleID = ?";
 

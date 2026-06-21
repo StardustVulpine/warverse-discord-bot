@@ -19,5 +19,14 @@ namespace stardustvulpine::Utils
         userDataDir = getenv("XDG_DATA_HOME");
         return std::format("{}", userDataDir);
     }
+
+    inline std::string PadString(std::string str, const size_t target_length) {
+        if (str.length() < target_length) {
+            str.resize(target_length, ' '); // Fill the rest with spaces
+        } else if (str.length() > target_length) {
+            str = str.substr(0, target_length - 3) + "..."; // Truncate if it's too long
+        }
+        return str;
+    }
 }
 

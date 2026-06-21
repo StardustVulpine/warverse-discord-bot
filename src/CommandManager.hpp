@@ -35,6 +35,20 @@ namespace wdb::commands
         std::vector<dpp::command_option> cOptions{};
         CommandCallbackFunction cCallbackFunction{};
         std::map<std::string, SubCommand> cSubCommands{};
+
+        Command& AddSubCommand(const std::string& subCommandName,
+            const std::string& subCommandDescription, const std::vector<dpp::command_option>& subCommandOptions,
+            const CommandCallbackFunction& subCommandCallback)
+        {
+            cSubCommands[subCommandName] = {
+                subCommandName,
+                subCommandDescription,
+                subCommandOptions,
+                subCommandCallback
+            };
+
+            return *this;
+        }
     };
 
     class CommandManager
@@ -45,8 +59,8 @@ namespace wdb::commands
 
     public:
         // Adding command to registry
-        void NewCommand(const std::string& commandName, const std::string& commandDescription, const uint64_t requiredPermissions,
-            const std::vector<dpp::command_option>& commandOptions, const CommandCallbackFunction& commandCallback)
+        Command& NewCommand(const std::string& commandName, const std::string& commandDescription, const uint64_t requiredPermissions = 0,
+            const std::vector<dpp::command_option>& commandOptions = {}, const CommandCallbackFunction& commandCallback = nullptr)
         {
             mCommandsMap[commandName] = {
                 commandName,
@@ -55,19 +69,11 @@ namespace wdb::commands
                 commandOptions,
                 commandCallback
             };
+
+            return mCommandsMap[commandName];
         }
 
-        void AddSubCommand(const std::string& rootCommandName, const std::string& subCommandName,
-            const std::string& subCommandDescription, const std::vector<dpp::command_option>& subCommandOptions,
-            const CommandCallbackFunction& subCommandCallback)
-        {
-            mCommandsMap[rootCommandName].cSubCommands[subCommandName] = {
-                subCommandName,
-                subCommandDescription,
-                subCommandOptions,
-                subCommandCallback
-            };
-        }
+
 
 
         // Registering all mapped commands to Discord

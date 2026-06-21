@@ -173,16 +173,24 @@ namespace wdb::db
         return results;
     }
 
-    std::string DBManager::GetUserNameByID(const int id) const
+    std::string DBManager::GetUserNameByID(const DiscordID id) const
     {
         Log::Trace(__func__);
-        SQLite::Statement query(*m_Database, sql_queries::GET_USER_BY_ID);
+        SQLite::Statement query(*m_Database, sql_queries::GET_USERNAME_BY_ID);
         query.bind(1, id);
 
         while (query.executeStep()) {
             return std::string(query.getColumn(0));
         }
         return "";
+    }
+
+    bool DBManager::UserExists(const DiscordID id) const
+    {
+        if (GetUserNameByID(id).empty()) {
+            return false;
+        }
+        return true;
     }
 
     nlohmann::json DBManager::GetAllFractions() const
@@ -207,11 +215,11 @@ namespace wdb::db
             results.push_back(fraction);
         }
         Log::Trace("Fractions Json created!");
-        Log::Debug(results.dump(4));
+        Log::Trace(results.dump(4));
         return results;
     }
 
-    std::string DBManager::GetFractionNameByID(const int id) const
+    std::string DBManager::GetFractionNameByID(const DiscordID id) const
     {
         Log::Trace(__func__);
         SQLite::Statement query(*m_Database, sql_queries::GET_FRACTION_BY_ID);
@@ -221,6 +229,14 @@ namespace wdb::db
             return std::string(query.getColumn(0));
         }
         return "";
+    }
+
+    bool DBManager::FractionExists(const DiscordID id) const
+    {
+        if (GetFractionNameByID(id).empty()) {
+            return false;
+        }
+        return true;
     }
 }
 

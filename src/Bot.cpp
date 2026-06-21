@@ -7,9 +7,11 @@
 
 namespace wdb
 {
+    const std::string PLACEHOLDER_FRACTION_IMAGE = "https://cdn.discordapp.com/attachments/1518336173309820998/1518342895956922589/clan.png?ex=6a399283&is=6a384103&hm=ddbf8027c11cf48ae2d42d56ab588c95a67f33d47bede3aec5ef61ab0c366a01";
+
     void Bot::OnCommandSentEvent()
     {
-
+//region GENERAL COMMANDS
         mCommandManager.NewCommand(
         "help",
         "Shows list of all available commands",
@@ -60,17 +62,15 @@ namespace wdb
             event.reply(std::format("Pong <@{}>!", std::to_string(userID)));
         });
 
+//endregion
 //region DB MANAGEMENT COMMANDS
 
+    //region CMD ADD
         mCommandManager.NewCommand(
-        "add",
+        "register",
         "Required permissions: Manage Guild",
-        dpp::p_manage_guild,
-        {},
-        nullptr
-        );
-        mCommandManager.AddSubCommand(
-            "add",
+        dpp::p_manage_guild)
+        .AddSubCommand(
             "user",
             "Add new user to database",
             {dpp::command_option(dpp::co_mentionable, "user", "The user to add", true)},
@@ -81,7 +81,7 @@ namespace wdb
                     return;
                 }
                 dpp::user user = event.command.get_resolved_user(std::get<dpp::snowflake>(event.get_parameter("user")));
-                dpp::guild_member member = event.command.get_resolved_member(std::get<dpp::snowflake>(event.get_parameter("user")));
+                const dpp::guild_member member = event.command.get_resolved_member(std::get<dpp::snowflake>(event.get_parameter("user")));
 
                 std::string userID = std::to_string(user.id);
                 std::string userAvatarURL = member.get_avatar_url();
@@ -131,9 +131,17 @@ namespace wdb
                     }
                 }
             }
-        );
-        mCommandManager.AddSubCommand(
-            "add",
+        )
+        /*.AddSubCommand(
+            "all_users",
+            "Bulk registration of all guild members",
+            {},
+            [this](const dpp::slashcommand_t& event)
+            {
+                // Not implemented yet
+            }
+        )*/
+        .AddSubCommand(
             "fraction",
             "Add new fraction to database",
             {
@@ -172,25 +180,38 @@ namespace wdb
             }
         );
 
-        mCommandManager.NewCommand(
+    //endregion
+    //region CMD REMOVE
+
+        commands::Command& removeCMD =  mCommandManager.NewCommand(
             "remove",
             "Removes users/fractions from database.\nRequired permissions: Manage Guild",
-            dpp::p_manage_guild,
-            {},
-            nullptr
-        );
-        mCommandManager.AddSubCommand(
-            "remove",
+            dpp::p_manage_guild
+        )
+        .AddSubCommand(
             "user",
             "Remove user from database",
-            {dpp::command_option(dpp::co_mentionable, "user", "The user to be removed", true)},
+            {dpp::command_option(dpp::co_mentionable, "user", "User to be removed", true)},
             [this](const dpp::slashcommand_t& event)
             {
                 if (event.get_parameter("user").index() == 0) {
-                    event.reply(dpp::message("Couldn't add user. No user provided.").set_flags(dpp::m_ephemeral));
+                    event.reply(dpp::message("Couldn't remove user. No user provided.").set_flags(dpp::m_ephemeral));
                     return;
                 }
                 dpp::user user = event.command.get_resolved_user(std::get<dpp::snowflake>(event.get_parameter("user")));
+
+                try {
+                    if (!m_dbManager->UserExists(user.id)) {
+                        event.reply(dpp::message("User not found.").set_flags(dpp::m_ephemeral));
+                        return;
+                    }
+                } catch (SQLite::Exception &e) {
+                    Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                    event.reply(dpp::message("SQLite Database Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what()));
+                    return;
+                }
+
+
                 const dpp::guild_member member = event.command.get_resolved_member(std::get<dpp::snowflake>(event.get_parameter("user")));
 
                 std::string userID = std::to_string(user.id);
@@ -227,38 +248,53 @@ namespace wdb
                 event.reply(replyMsg);
             });
             mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+                // Disable buttons when any of them was clicked
+                if (event.custom_id.find("REMOVE_USER_CONFIRM_BUTTON") == 0) {
+                    dpp::message updatedMsg = event.command.msg;
+                    if (!updatedMsg.components.empty()) {
+                        for (auto& component : updatedMsg.components[0].components) {
+                            component.set_disabled(true);
+                        }
+                    }
+                    event.reply(dpp::ir_update_message, updatedMsg);
+                }
                 if (event.custom_id.find("REMOVE_USER_CONFIRM_BUTTON-YES:") == 0)
                 {
                     const std::string targetID_str = event.custom_id.substr(31);
                     const DiscordID targetID = std::stoull(targetID_str);
 
-                    // Grab the message that the button was attached to and disable all components on the first action row
-                    dpp::message updated_msg = event.command.msg;
-                    if (!updated_msg.components.empty()) {
-                        for (auto& component : updated_msg.components[0].components) {
-                            component.set_disabled(true);
-                        }
-                    }
-                    event.reply(dpp::ir_update_message, updated_msg);
-
                     try {
                         m_dbManager->RemoveUser(targetID);
-                        event.reply(dpp::message(":wastebasket: User removed from database!"));
+                        dpp::message followUpMsg(event.command.channel_id, ":wastebasket: User removed from database!");
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
                     }
                     catch (SQLite::Exception &e) {
                         Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
-                        if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
-                        {
-                            event.reply(dpp::message(":x: User not found in database!"));
-                        }
+                        dpp::message followUpMsg(event.command.channel_id, "SQLite Database Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
+                    }
+                    catch (std::exception& e) {
+                        Log::Error(e.what());
+
+                        dpp::message followUpMsg(event.command.channel_id, "There was error. Check bot logs for more info.");
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
                     }
                 }
                 if (event.custom_id == "REMOVE_USER_CONFIRM_BUTTON-NO") {
-                    event.reply(":x: Operation cancelled.");
+                    dpp::message followUpMsg(event.command.channel_id, ":x: Operation cancelled.");
+                    followUpMsg.set_reference(event.command.msg.id);
+
+                    mBotCluster.message_create(followUpMsg);
                 }
-            });
-        mCommandManager.AddSubCommand(
-            "remove",
+            }
+        );
+        removeCMD.AddSubCommand(
             "fraction",
             "Remove fraction from database",
             {dpp::command_option(dpp::co_role, "fraction_role", "Role associated with fraction you want to remove", true)},
@@ -270,7 +306,13 @@ namespace wdb
                 }
                 const DiscordID fractionID = event.command.get_resolved_role(std::get<dpp::snowflake>(event.get_parameter("fraction_role"))).id;
 
+
                 try {
+                    if (!m_dbManager->FractionExists(fractionID)) {
+                        event.reply(dpp::message("Fraction not found.").set_flags(dpp::m_ephemeral));
+                        return;
+                    }
+
                     std::string fractionName = m_dbManager->GetFractionNameByID(fractionID);
 
                     const dpp::embed embed = dpp::embed()
@@ -302,43 +344,57 @@ namespace wdb
                 }
                 catch (SQLite::Exception &e) {
                     Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
-                    if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
-                    {
-                        const std::string reply = std::format(R"(Couldn't find fraction with assigned role <@&{}> in database.)",
-                            std::to_string(fractionID));
-                        event.reply(dpp::message(reply));
-                    }
+                    event.reply(dpp::message("SQLite Database Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what()));
                 }
             });
             mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+                // Disable buttons when any of them was clicked
+                if (event.custom_id.find("REMOVE_FRACTION_CONFIRM_BUTTON") == 0) {
+                    dpp::message updatedMsg = event.command.msg;
+                    if (!updatedMsg.components.empty()) {
+                        for (auto& component : updatedMsg.components[0].components) {
+                            component.set_disabled(true);
+                        }
+                    }
+                    event.reply(dpp::ir_update_message, updatedMsg);
+                }
                 if (event.custom_id.find("REMOVE_FRACTION_CONFIRM_BUTTON-YES:") == 0)
                 {
                     const std::string targetID_str = event.custom_id.substr(35);
                     const DiscordID targetID = std::stoull(targetID_str);
 
                     try {
-                        std::string fractionName = m_dbManager->GetFractionNameByID(targetID);
                         m_dbManager->RemoveFraction(targetID);
-                        const std::string reply = std::format(R"(Fraction '{}' with assigned role <@&{}> has been removed from database.)",
-                            fractionName,  std::to_string(targetID));
-                        event.reply(dpp::message(reply));
+
+                        dpp::message followUpMsg(event.command.channel_id, ":wastebasket: Fraction removed from database!");
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
                     }
                     catch (SQLite::Exception &e) {
                         Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
-                        if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
-                        {
-                            const std::string reply = std::format(R"(Couldn't find fraction with assigned role <@&{}> in database.)",
-                                std::to_string(targetID));
-                            event.reply(dpp::message(reply));
-                        }
+                        dpp::message followUpMsg(event.command.channel_id, "SQLite Database Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
+                    }
+                    catch (std::exception& e) {
+                        Log::Error(e.what());
+
+                        dpp::message followUpMsg(event.command.channel_id, "There was error. Check bot logs for more info.");
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
                     }
                 }
                 if (event.custom_id == "REMOVE_FRACTION_CONFIRM_BUTTON-NO") {
-                    event.reply(":x: Operation cancelled.");
+                    dpp::message followUpMsg(event.command.channel_id, ":x: Operation cancelled.");
+                    followUpMsg.set_reference(event.command.msg.id);
+
+                    mBotCluster.message_create(followUpMsg);
                 }
             });
-        mCommandManager.AddSubCommand(
-            "remove",
+        removeCMD.AddSubCommand(
             "all_users",
             "Remove ALL USERS from database (USE WITH CAUTION!)",
             {},
@@ -371,28 +427,49 @@ namespace wdb
                 event.reply(replyMsg);
             });
             mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+                // Disable buttons when any of them was clicked
+                if (event.custom_id.find("REMOVE_ALL_USERS_CONFIRM_BUTTON") == 0) {
+                    dpp::message updatedMsg = event.command.msg;
+                    if (!updatedMsg.components.empty()) {
+                        for (auto& component : updatedMsg.components[0].components) {
+                            component.set_disabled(true);
+                        }
+                    }
+                    event.reply(dpp::ir_update_message, updatedMsg);
+                }
                 if (event.custom_id == "REMOVE_ALL_USERS_CONFIRM_BUTTON-YES")
                 {
                     try {
                         m_dbManager->RemoveAllUsers();
-                        const std::string reply = ":wastebasket: ALL USERS have been REMOVED from database.";
-                        event.reply(dpp::message(reply));
+                        dpp::message followUpMsg(event.command.channel_id, ":wastebasket: ALL USERS have been REMOVED from database.");
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
                     }
                     catch (SQLite::Exception &e) {
                         Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
-                        if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
-                        {
-                            const std::string reply = "Operation wasn't possible due to SQLite Database error";
-                            event.reply(dpp::message(reply));
-                        }
+                        dpp::message followUpMsg(event.command.channel_id, "SQLite Database Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
+                    }
+                    catch (std::exception& e) {
+                        Log::Error(e.what());
+
+                        dpp::message followUpMsg(event.command.channel_id, "There was error. Check bot logs for more info.");
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
                     }
                 }
                 if (event.custom_id == "REMOVE_ALL_USERS_CONFIRM_BUTTON-NO") {
-                    event.reply(":x: Operation cancelled.");
+                    dpp::message followUpMsg(event.command.channel_id, ":x: Operation cancelled.");
+                    followUpMsg.set_reference(event.command.msg.id);
+
+                    mBotCluster.message_create(followUpMsg);
                 }
             });
-        mCommandManager.AddSubCommand(
-            "remove",
+        removeCMD.AddSubCommand(
             "all_fractions",
             "Remove ALL FRACTIONS from database (USE WITH CAUTION!)",
             {},
@@ -426,45 +503,63 @@ namespace wdb
                 event.reply(replyMsg);
             });
             mBotCluster.on_button_click([this](const dpp::button_click_t& event){
+                // Disable buttons when any of them was clicked
+                if (event.custom_id.find("REMOVE_ALL_FRACTIONS_CONFIRM_BUTTON") == 0) {
+                    dpp::message updatedMsg = event.command.msg;
+                    if (!updatedMsg.components.empty()) {
+                        for (auto& component : updatedMsg.components[0].components) {
+                            component.set_disabled(true);
+                        }
+                    }
+                    event.reply(dpp::ir_update_message, updatedMsg);
+                }
                 if (event.custom_id == "REMOVE_ALL_FRACTIONS_CONFIRM_BUTTON-YES")
                 {
                     try {
                         m_dbManager->RemoveAllFractions();
-                        const std::string reply = ":wastebasket: ALL FRACTIONS have been REMOVED from database.";
-                        event.reply(dpp::message(reply));
+
+                        dpp::message followUpMsg(event.command.channel_id, ":wastebasket: ALL FRACTIONS have been REMOVED from database.");
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
                     }
                     catch (SQLite::Exception &e) {
                         Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
-                        if (e.getErrorCode() == db::error_code::SQLITE_UNIQUE_CONSTRAINT)
-                        {
-                            const std::string reply = "Operation wasn't possible due to SQLite Database error";
-                            event.reply(dpp::message(reply));
-                        }
+                        dpp::message followUpMsg(event.command.channel_id, "SQLite Database Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
+                    }
+                    catch (std::exception& e) {
+                        Log::Error(e.what());
+
+                        dpp::message followUpMsg(event.command.channel_id, "There was error. Check bot logs for more info.");
+                        followUpMsg.set_reference(event.command.msg.id);
+
+                        mBotCluster.message_create(followUpMsg);
                     }
                 }
                 if (event.custom_id == "REMOVE_ALL_FRACTIONS_CONFIRM_BUTTON-NO") {
-                    event.reply(":x: Operation cancelled.");
+                    dpp::message followUpMsg(event.command.channel_id, ":x: Operation cancelled.");
+                    followUpMsg.set_reference(event.command.msg.id);
+
+                    mBotCluster.message_create(followUpMsg);
                 }
             });
 
-//endregion
+    //endregion
+    //region DB SHOW
 
-//region PRINTING INFO FROM DB
         mCommandManager.NewCommand(
         "show",
-        "Shows users/fractions in database",
-        0,
-        {},
-        nullptr
-        );
-        mCommandManager.AddSubCommand(
-            "show",
+        "Shows users/fractions in database"
+        )
+        .AddSubCommand(
             "users",
             "List all users in database",
             {},
             [this](const dpp::slashcommand_t& event)
             {
-                dpp::message replyMsg;
                 json allUsers;
                 try {
                     allUsers = m_dbManager->GetAllUsers();
@@ -472,9 +567,10 @@ namespace wdb
                     Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
                 }
 
-                dpp::embed embed = dpp::embed()
-                    .set_title("Registered users")
-                    .set_color(dpp::colors::sti_blue);
+                std::string table = std::string()
+                    .append("```\n")
+                    .append("|       User       |         ID          |    Fraction    |\n")
+                    .append("|------------------|---------------------|----------------|\n");
 
                 for (const auto& user : allUsers)
                 {
@@ -482,25 +578,28 @@ namespace wdb
                     std::string discord_id = user.value("discordID", "none");
                     std::string fraction = user.value("fraction", "none");
 
-                    std::string fieldName = "👤 " + username;
-                    std::string fieldValue = "🪪 **ID:** " + discord_id + "    📝 **Fraction:** " + fraction;
+                    username = stardustvulpine::Utils::PadString(username, 16);
+                    discord_id = stardustvulpine::Utils::PadString(discord_id, 19);
+                    fraction = stardustvulpine::Utils::PadString(fraction, 14);
 
-                    embed.add_field(fieldName, fieldValue);
+                    table.append("| " + username + " | " + discord_id + " | " + fraction + " |\n");
                 }
+                table.append("```\n");
 
-                replyMsg.add_embed(embed);
+                const dpp::embed embed = dpp::embed()
+                    .set_title(":bust_in_silhouette: Registered users")
+                    .set_color(dpp::colors::sti_blue)
+                    .set_description(table);
 
-                event.reply(replyMsg);
+                event.reply(dpp::message().add_embed(embed));
             }
-        );
-        mCommandManager.AddSubCommand(
-            "show",
+        )
+        .AddSubCommand(
             "fractions",
             "List all fractions in database",
             {},
             [this](const dpp::slashcommand_t& event)
             {
-                dpp::message replyMsg;
                 json allFractions;
                 try {
                     allFractions = m_dbManager->GetAllFractions();
@@ -508,9 +607,7 @@ namespace wdb
                     Log::Error("SQLite Error (" + std::to_string(e.getErrorCode()) + ") : " + e.what());
                 }
 
-                dpp::embed embed = dpp::embed()
-                    .set_title("Fractions")
-                    .set_color(dpp::colors::sti_blue);
+                dpp::message replyMsg;
 
                 for (const auto& fraction : allFractions)
                 {
@@ -521,19 +618,28 @@ namespace wdb
                     std::string fractionCurrentExp = fraction.value("CurrentExp", "none");
                     std::string fractionExpToNextLevel = fraction.value("ExpToNextLevel", "none");
 
-                    std::string fieldName = "📝 " + fractionName;
-                    std::string fieldValue = fractionDescription + "\n**Role:** <@&" + fractionRoleID + ">\n**LEVEL:** " + fractionLevel +
-                        " (" + fractionCurrentExp + "/" + fractionExpToNextLevel + " exp)";
+                    dpp::embed fractionEmbed = dpp::embed()
+                        .set_color(dpp::colors::sti_blue)
+                        .set_title(fractionName)
+                        .set_description(fractionDescription)
+                        .set_thumbnail(PLACEHOLDER_FRACTION_IMAGE)
+                        .add_field("Level: " + fractionLevel, "(" + fractionCurrentExp + "/" + fractionExpToNextLevel + " exp)", true)
+                        .add_field("Assigned Role: ", "<@&" + fractionRoleID + ">", true)
+                        .set_footer(dpp::embed_footer("🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ 50%", "", ""));
 
-                    embed.add_field(fieldName, fieldValue);
+                    replyMsg.add_embed(fractionEmbed);
                 }
 
-                replyMsg.add_embed(embed);
+                if (Common::IsMessageEmpty(replyMsg)) {
+                    event.reply(":x: No fractions created yet.");
+                    return;
+                }
 
                 event.reply(replyMsg);
             }
         );
 
+    //endregion
 //endregion
 
 //region TEST FIELD
@@ -591,26 +697,7 @@ namespace wdb
                 });
         });
 
-        mCommandManager.NewCommand(
-        "button",
-        "test of a button",
-        0,
-        {},
-        [](const dpp::slashcommand_t& event)
-        {
-            dpp::message msg(event.command.channel_id, "this text has a button");
 
-            msg.add_component(
-                dpp::component().add_component(
-                    dpp::component()
-                    .set_label("Click Me!")
-                    .set_type(dpp::cot_button)
-                    .set_style(dpp::cos_primary)
-                    .set_id("testButton")
-                )
-            );
-            event.reply(msg);
-        });
 //endregion
     }
 
